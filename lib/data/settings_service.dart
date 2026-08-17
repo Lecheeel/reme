@@ -7,6 +7,11 @@ class SettingsService {
   static const _kShuffle = 'shuffle_options';
   static const _kDailyTarget = 'daily_target';
   static const _kNewDailyCap = 'new_daily_cap';
+  static const _kWrongPos = 'wrong_review_position';
+
+  /// 错题重现位置：nearby = 2~3 题后随机，end = 队尾。
+  static const String wrongPosNearby = 'nearby';
+  static const String wrongPosEnd = 'end';
 
   /// 默认每日学习量（日负荷目标，打卡基准）。
   static const int defaultDailyTarget = 50;
@@ -34,4 +39,12 @@ class SettingsService {
 
   static Future<void> setNewDailyCap(int value) async =>
       (await SharedPreferences.getInstance()).setInt(_kNewDailyCap, value);
+
+  /// 错题重现位置（默认队尾，与历史行为一致）。
+  static Future<String> getWrongReviewPosition() async =>
+      (await SharedPreferences.getInstance()).getString(_kWrongPos) ??
+          wrongPosEnd;
+
+  static Future<void> setWrongReviewPosition(String value) async =>
+      (await SharedPreferences.getInstance()).setString(_kWrongPos, value);
 }

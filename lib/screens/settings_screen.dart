@@ -15,6 +15,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
   String _url = LogService.defaultUrl;
   bool _shuffle = false;
   int _newCap = SettingsService.defaultNewDailyCap;
+  String _wrongPos = SettingsService.wrongPosEnd;
   bool _uploading = false;
 
   @override
@@ -26,12 +27,14 @@ class _SettingsScreenState extends State<SettingsScreen> {
   Future<void> _load() async {
     final shuffle = await SettingsService.getShuffleOptions();
     final newCap = await SettingsService.getNewDailyCap();
+    final wrongPos = await SettingsService.getWrongReviewPosition();
     if (!mounted) return;
     setState(() {
       _enabled = LogService.instance.enabled;
       _url = LogService.instance.url;
       _shuffle = shuffle;
       _newCap = newCap;
+      _wrongPos = wrongPos;
     });
   }
 
@@ -174,6 +177,59 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 setState(() => _newCap = v);
                 _snack('每日新题上限已设为 $v 题');
               },
+            ),
+          ),
+          ListTile(
+            title: const Text('错题重现位置'),
+            subtitle: const Text('答错/评模糊/忘记的题再次出现的位置'),
+            trailing: Text(
+              _wrongPos == SettingsService.wrongPosNearby ? '2~3 题后随机' : '队尾',
+              style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 15),
+            ),
+            onTap: () => showModalBottomSheet<void>(
+              context: context,
+              builder: (ctx) => SafeArea(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    const Padding(
+                      padding: EdgeInsets.all(12),
+                      child: Text('错题重现位置',
+                          style: TextStyle(
+                              fontWeight: FontWeight.bold, fontSize: 16)),
+                    ),
+                    RadioListTile<String>(
+                      title: const Text('2~3 题后随机出现'),
+                      subtitle: const Text('趁热重练，错题很快再遇到'),
+                      value: SettingsService.wrongPosNearby,
+                      groupValue: _wrongPos,
+                      onChanged: (v) async {
+                        if (v != null) {
+                          await SettingsService.setWrongReviewPosition(v);
+                          setState(() => _wrongPos = v);
+                          _snack('已切换：错题 2~3 题后随机出现');
+                        }
+                        Navigator.pop(ctx);
+                      },
+                    ),
+                    RadioListTile<String>(
+                      title: const Text('队尾'),
+                      subtitle: const Text('等其他题都过一遍后再出现'),
+                      value: SettingsService.wrongPosEnd,
+                      groupValue: _wrongPos,
+                      onChanged: (v) async {
+                        if (v != null) {
+                          await SettingsService.setWrongReviewPosition(v);
+                          setState(() => _wrongPos = v);
+                          _snack('已切换：错题排到队尾');
+                        }
+                        Navigator.pop(ctx);
+                      },
+                    ),
+                    const SizedBox(height: 8),
+                  ],
+                ),
+              ),
             ),
           ),
           const Divider(),

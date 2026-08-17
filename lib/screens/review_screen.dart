@@ -38,6 +38,7 @@ class _ReviewScreenState extends State<ReviewScreen> {
 
   bool _loading = true;
   List<_SessionItem> _queue = [];
+  String _wrongPos = SettingsService.wrongPosEnd; // 错题重现位置
   int _total = 0;
   int _graduated = 0;
   int _attempts = 0;
@@ -64,6 +65,7 @@ class _ReviewScreenState extends State<ReviewScreen> {
     _shuffle = await SettingsService.getShuffleOptions();
     final dailyTarget = await SettingsService.getDailyTarget();
     final newCap = await SettingsService.getNewDailyCap();
+    _wrongPos = await SettingsService.getWrongReviewPosition();
     // 章节复习时，把该章子章节声明的 related 关联子章节（如全面依法治国
     // 关联党的全面领导/人民民主）的到期复习题也一起拉出来复习
     List<String>? related;
@@ -215,7 +217,7 @@ class _ReviewScreenState extends State<ReviewScreen> {
         LogService.instance.log('info',
             'graduate ${q.id}${isFirstPass ? ' first-pass' : ''}');
       } else {
-        _queue.add(_queue.removeAt(0)); // 没过关，排到队尾再次出现
+        _requeueWrong(); // 没过关：按设置插到 2~3 题后随机位置或队尾
       }
       if (_queue.isEmpty) {
         LogService.instance.log('info',
@@ -232,6 +234,20 @@ class _ReviewScreenState extends State<ReviewScreen> {
       }
       _resetForCurrent();
     });
+  }
+
+  /// 没过关的题重新入队：按设置插到 2~3 题后随机位置，或排到队尾。
+  void _requeueWrong() {
+    final item = _queue.removeAt(0);
+    if (_wrongPos == SettingsService.wrongPosNearby) {
+      final offset = 2 + Random().nextInt(2); // 2 或 3
+      final idx = offset < _queue.length ? offset : _queue.length;
+      _queue.insert(idx, item);
+      LogService.instance.log('info',
+          'requeue ${item.question.id} at +$offset');
+    } else {
+      _queue.add(item);
+    }
   }
 
   @override
