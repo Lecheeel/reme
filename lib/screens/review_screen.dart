@@ -16,7 +16,31 @@ class _SessionItem {
   final Question question;
   int streak = 0; // 连续答对（且评「认识」）次数
   int attempts = 0; // 本会话内作答次数（用于判断是否初次作答）
+  int wrongCount = 0; // 本会话内答错/评模糊/忘记次数（用于递增间隔重现）
   _SessionItem(this.question);
+}
+
+/// 撤销记录：恢复上一步评分。
+class _UndoRecord {
+  final String questionId;
+  final CardState? cardBefore; // 评分前的卡片状态（null = 评分前无卡）
+  final int graduatedBefore;
+  final int attemptsBefore;
+  final int correctBefore;
+  final int newFirstTriesBefore;
+  final _SessionItem item;
+  final int insertAt; // item 在队列中的位置（_rate 时恒为队首 0）
+
+  _UndoRecord({
+    required this.questionId,
+    required this.cardBefore,
+    required this.graduatedBefore,
+    required this.attemptsBefore,
+    required this.correctBefore,
+    required this.newFirstTriesBefore,
+    required this.item,
+    required this.insertAt,
+  });
 }
 
 /// 刷题闭环：读题 → 作答（单选点击即判）→ 判分 → 解析 → FSRS 评分。
@@ -24,8 +48,9 @@ class _SessionItem {
 /// 模糊/不认识的题会在本次会话中反复出现，直到连续 3 次答对才过关。
 class ReviewScreen extends StatefulWidget {
   final String? chapter; // null = 全部科目/章节
+  final bool weakOnly; // true = 薄弱题专项队列（lapses ≥ 2 且到期）
 
-  const ReviewScreen({super.key, this.chapter});
+  const ReviewScreen({super.key, this.chapter, this.weakOnly = false});
 
   @override
   State<ReviewScreen> createState() => _ReviewScreenState();
@@ -38,7 +63,8 @@ class _ReviewScreenState extends State<ReviewScreen> {
 
   bool _loading = true;
   List<_SessionItem> _queue = [];
-  String _wrongPos = SettingsService.wrongPosEnd; // 错题重现位置
+  String _wrongPos = SettingsService.wrongPosIncremental; // 错题重现策略
+  _UndoRecord? _undo; // 上一步评分（可撤销）
   int _total = 0;
   int _graduated = 0;
   int _attempts = 0;
@@ -76,12 +102,18 @@ class _ReviewScreenState extends State<ReviewScreen> {
     }
     // 负荷模型：复习优先全刷（不截断），剩余容量配新题
     // 新题配额 = min(新题上限 N, max(0, 每日目标 − 当天到期复习数))
-    final reviews = await DatabaseHelper.instance
-        .getReviewQuestions(chapter: widget.chapter, relatedKpIds: related);
-    final newLimit = min(newCap, max(0, dailyTarget - reviews.length));
-    final newQs = await DatabaseHelper.instance
-        .getNewQuestions(chapter: widget.chapter, limit: newLimit);
-    final qs = [...reviews, ...newQs];
+    final List<Question> qs;
+    if (widget.weakOnly) {
+      // 薄弱题专项：lapses ≥ 2 且到期的题
+      qs = await DatabaseHelper.instance.getWeakQuestions();
+    } else {
+      final reviews = await DatabaseHelper.instance
+          .getReviewQuestions(chapter: widget.chapter, relatedKpIds: related);
+      final newLimit = min(newCap, max(0, dailyTarget - reviews.length));
+      final newQs = await DatabaseHelper.instance
+          .getNewQuestions(chapter: widget.chapter, limit: newLimit);
+      qs = [...reviews, ...newQs];
+    }
     if (!mounted) return;
     setState(() {
       _queue = qs.map((q) => _SessionItem(q)).toList();
@@ -90,11 +122,12 @@ class _ReviewScreenState extends State<ReviewScreen> {
       _attempts = 0;
       _correctAttempts = 0;
       _newFirstTries = 0;
+      _undo = null;
       _loading = false;
       _resetForCurrent();
     });
     LogService.instance.log('info',
-        'review start chapter=${widget.chapter ?? "all"} reviews=${reviews.length} new=${newQs.length} target=$dailyTarget cap=$newCap shuffle=$_shuffle related=${related?.join(",") ?? "none"}');
+        'review start chapter=${widget.chapter ?? "all"} weak=${widget.weakOnly} count=${qs.length} target=$dailyTarget cap=$newCap shuffle=$_shuffle related=${related?.join(",") ?? "none"}');
   }
 
   void _resetForCurrent() {
@@ -174,8 +207,8 @@ class _ReviewScreenState extends State<ReviewScreen> {
     final item = _queue.first;
     final q = item.question;
     final correct = _isCorrect(_selected);
-    final card = await DatabaseHelper.instance.getCard(q.id) ??
-        CardState(questionId: q.id);
+    final existing = await DatabaseHelper.instance.getCard(q.id);
+    final card = existing ?? CardState(questionId: q.id);
     final outcome = _outcomes!.firstWhere((o) => o.rating == rating);
     final now = DateTime.now();
     // 初次作答即答对：认识 = 直接掌握（首轮 25 天）；模糊 = 有点印象（对半约 13 天）；
@@ -187,6 +220,17 @@ class _ReviewScreenState extends State<ReviewScreen> {
         ? _firstPassStability.round()
         : (_firstPassStability / 2).round();
     final days = isFirstPass ? firstPassDays : outcome.intervalDays;
+    // 记录撤销点（评分前的卡片状态与各项计数）
+    _undo = _UndoRecord(
+      questionId: q.id,
+      cardBefore: existing,
+      graduatedBefore: _graduated,
+      attemptsBefore: _attempts,
+      correctBefore: _correctAttempts,
+      newFirstTriesBefore: _newFirstTries,
+      item: item,
+      insertAt: 0,
+    );
     final updated = CardState(
       questionId: q.id,
       difficulty: outcome.difficulty,
@@ -236,18 +280,59 @@ class _ReviewScreenState extends State<ReviewScreen> {
     });
   }
 
-  /// 没过关的题重新入队：按设置插到 2~3 题后随机位置，或排到队尾。
+  /// 没过关的题重新入队：按策略——
+  /// 递增间隔（默认）：第 1 次错隔 2 题、第 2 次隔 5 题、之后隔 10 题；
+  /// 2~3 题后随机；或排到队尾。
   void _requeueWrong() {
     final item = _queue.removeAt(0);
-    if (_wrongPos == SettingsService.wrongPosNearby) {
-      final offset = 2 + Random().nextInt(2); // 2 或 3
+    item.wrongCount++;
+    final int offset;
+    switch (_wrongPos) {
+      case SettingsService.wrongPosIncremental:
+        offset = switch (item.wrongCount) {
+          1 => 2,
+          2 => 5,
+          _ => 10,
+        };
+        break;
+      case SettingsService.wrongPosNearby:
+        offset = 2 + Random().nextInt(2); // 2 或 3
+        break;
+      default:
+        offset = -1; // 队尾
+    }
+    if (offset < 0) {
+      _queue.add(item);
+    } else {
       final idx = offset < _queue.length ? offset : _queue.length;
       _queue.insert(idx, item);
       LogService.instance.log('info',
-          'requeue ${item.question.id} at +$offset');
-    } else {
-      _queue.add(item);
+          'requeue ${item.question.id} at +$offset (wrong #${item.wrongCount})');
     }
+  }
+
+  /// 撤销上一步评分：恢复卡片状态与计数，题目回到原位置。
+  Future<void> _undoLast() async {
+    final u = _undo;
+    if (u == null) return;
+    final db = DatabaseHelper.instance;
+    if (u.cardBefore == null) {
+      await db.deleteCard(u.questionId);
+    } else {
+      await db.upsertCard(u.cardBefore!);
+    }
+    if (!mounted) return;
+    setState(() {
+      _queue.removeWhere((e) => identical(e, u.item));
+      _queue.insert(min(u.insertAt, _queue.length), u.item);
+      _graduated = u.graduatedBefore;
+      _attempts = u.attemptsBefore;
+      _correctAttempts = u.correctBefore;
+      _newFirstTries = u.newFirstTriesBefore;
+      _undo = null;
+      _resetForCurrent();
+    });
+    LogService.instance.log('info', 'undo ${u.questionId}');
   }
 
   @override
@@ -300,7 +385,14 @@ class _ReviewScreenState extends State<ReviewScreen> {
     }
     return Scaffold(
       appBar: AppBar(
-        title: Text(widget.chapter ?? '复习'),
+        title: Text(widget.chapter ?? (widget.weakOnly ? '薄弱题专项' : '复习')),
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.undo),
+            tooltip: '撤销上一步',
+            onPressed: _undo == null ? null : _undoLast,
+          ),
+        ],
         bottom: PreferredSize(
           preferredSize: const Size.fromHeight(4),
           child: LinearProgressIndicator(

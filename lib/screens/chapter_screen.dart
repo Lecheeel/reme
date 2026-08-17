@@ -42,7 +42,8 @@ class _ChapterScreenState extends State<ChapterScreen> {
                 final hasDue = c.due > 0;
                 return ListTile(
                   title: Text(c.name),
-                  subtitle: Text('待复习 ${c.due} · 共 ${c.total}'),
+                  subtitle: Text(
+                      '新题 ${c.newCount} · 学习中 ${c.learningCount} · 复习 ${c.reviewCount}'),
                   trailing: const Icon(Icons.chevron_right),
                   enabled: hasDue,
                   onTap: hasDue

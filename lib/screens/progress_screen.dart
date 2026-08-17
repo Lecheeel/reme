@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../data/database.dart';
 import '../models/mastery.dart';
 import '../widgets/charts.dart';
+import 'review_screen.dart';
 
 class ProgressScreen extends StatefulWidget {
   const ProgressScreen({super.key});
@@ -79,6 +80,27 @@ class _ProgressScreenState extends State<ProgressScreen> {
               ),
             ),
             const SizedBox(height: 8),
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 16),
+              child: Row(
+                children: [
+                  Expanded(
+                    child: FilledButton.icon(
+                      onPressed: () {
+                        Navigator.of(context).push(
+                          MaterialPageRoute(
+                            builder: (_) => const ReviewScreen(weakOnly: true),
+                          ),
+                        ).then((_) => _load());
+                      },
+                      icon: const Icon(Icons.healing),
+                      label: const Text('薄弱题专项复习'),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 8),
             MasteryDonutChart(
               mastered: mastered,
               fuzzy: fuzzy,
@@ -136,10 +158,25 @@ class _ProgressScreenState extends State<ProgressScreen> {
         e.stem,
         maxLines: 2,
         overflow: TextOverflow.ellipsis,
-        style: const TextStyle(fontSize: 14),
+        style: TextStyle(
+            fontSize: 14,
+            decoration: e.suspended ? TextDecoration.lineThrough : null,
+            color: e.suspended ? Colors.grey : null),
       ),
-      subtitle: Text('${e.knowledgePoint} · $stabilityText',
+      subtitle: Text(
+          '${e.knowledgePoint} · ${e.suspended ? '已暂停' : stabilityText}',
           style: const TextStyle(fontSize: 12)),
+      trailing: IconButton(
+        icon: Icon(
+          e.suspended ? Icons.play_circle_outline : Icons.pause_circle_outline,
+          color: e.suspended ? Colors.green : Colors.grey,
+        ),
+        tooltip: e.suspended ? '恢复' : '暂停',
+        onPressed: () async {
+          await DatabaseHelper.instance.setSuspended(e.id, !e.suspended);
+          _load();
+        },
+      ),
     );
   }
 }

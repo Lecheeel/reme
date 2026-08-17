@@ -24,6 +24,9 @@ class _HomeScreenState extends State<HomeScreen> {
   int _mastered = 0;
   int _dailyTarget = SettingsService.defaultDailyTarget;
   int _estimateDays = 0;
+  int _newCount = 0; // 队列三栏：新题
+  int _learningCount = 0; // 学习中（未掌握且到期）
+  int _reviewCount = 0; // 复习（已掌握且到期）
   double _k = 1.5; // 每掌握一题平均作答次数（估算用，真实数据兜底）
   int _effectiveDaily = 0; // 每天用于推进掌握的净产能（扣除到期复习）
   DailyStat? _today; // 今日学习统计（打卡用）
@@ -43,12 +46,16 @@ class _HomeScreenState extends State<HomeScreen> {
     final avgReps = await db.getAvgRepsForMastered();
     final today = await db.getTodayStat();
     final streak = await db.getCheckInStreak();
+    final (newCnt, learnCnt, reviewCnt) = await db.getQueueCounts();
     if (!mounted) return;
     setState(() {
       _total = total;
       _due = due;
       _mastered = mastered;
       _dailyTarget = target;
+      _newCount = newCnt;
+      _learningCount = learnCnt;
+      _reviewCount = reviewCnt;
       // 每掌握一题平均消耗的作答次数：真实统计（clamp 1~4），无数据兜底 1.5
       final k = ((avgReps ?? 1.5).clamp(1.0, 4.0)).toDouble();
       _k = k;
@@ -276,7 +283,6 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   Widget _buildSubjectCard() {
-    final remaining = _total - _mastered;
     return Card(
       child: ListTile(
         contentPadding: const EdgeInsets.all(16),
@@ -287,7 +293,7 @@ class _HomeScreenState extends State<HomeScreen> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text('待复习 $_due · 已掌握 $_mastered · 待学 $remaining · 共 $_total'),
+              Text('新题 $_newCount · 学习中 $_learningCount · 复习 $_reviewCount · 已掌握 $_mastered'),
               const SizedBox(height: 12),
               ClipRRect(
                 borderRadius: BorderRadius.circular(4),

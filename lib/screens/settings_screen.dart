@@ -183,7 +183,11 @@ class _SettingsScreenState extends State<SettingsScreen> {
             title: const Text('错题重现位置'),
             subtitle: const Text('答错/评模糊/忘记的题再次出现的位置'),
             trailing: Text(
-              _wrongPos == SettingsService.wrongPosNearby ? '2~3 题后随机' : '队尾',
+              switch (_wrongPos) {
+                SettingsService.wrongPosIncremental => '递增间隔',
+                SettingsService.wrongPosNearby => '2~3 题后随机',
+                _ => '队尾',
+              },
               style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 15),
             ),
             onTap: () => showModalBottomSheet<void>(
@@ -194,7 +198,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   children: [
                     const Padding(
                       padding: EdgeInsets.all(12),
-                      child: Text('错题重现位置',
+                      child: Text('错题重现策略',
                           style: TextStyle(
                               fontWeight: FontWeight.bold, fontSize: 16)),
                     ),
@@ -204,14 +208,17 @@ class _SettingsScreenState extends State<SettingsScreen> {
                         if (v == null) return;
                         setState(() => _wrongPos = v);
                         SettingsService.setWrongReviewPosition(v);
-                        _snack(v == SettingsService.wrongPosNearby
-                            ? '已切换：错题 2~3 题后随机出现'
-                            : '已切换：错题排到队尾');
+                        _snack('错题重现策略已更新');
                         Navigator.pop(ctx);
                       },
                       child: const Column(
                         mainAxisSize: MainAxisSize.min,
                         children: [
+                          RadioListTile<String>(
+                            value: SettingsService.wrongPosIncremental,
+                            title: Text('递增间隔（推荐）'),
+                            subtitle: Text('第 1 次错隔 2 题、第 2 次隔 5 题、之后隔 10 题'),
+                          ),
                           RadioListTile<String>(
                             value: SettingsService.wrongPosNearby,
                             title: Text('2~3 题后随机出现'),

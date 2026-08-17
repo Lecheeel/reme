@@ -8,13 +8,24 @@ import '../models/mastery.dart';
 import '../models/question.dart';
 import 'question_bank_loader.dart';
 
-/// 章节统计：名称 + 总题数 + 待复习题数。
+/// 章节统计：名称 + 总数 + 三栏队列（新题/学习中/复习）。
 class ChapterStat {
   final String name;
   final int total;
-  final int due;
+  final int newCount;
+  final int learningCount;
+  final int reviewCount;
 
-  ChapterStat(this.name, this.total, this.due);
+  ChapterStat(
+    this.name,
+    this.total,
+    this.newCount,
+    this.learningCount,
+    this.reviewCount,
+  );
+
+  /// 待办总量（新题 + 学习中 + 复习）。
+  int get due => newCount + learningCount + reviewCount;
 }
 
 /// 单日学习统计（daily_stats 表，供趋势图与打卡）。
@@ -51,6 +62,7 @@ class QuestionProgress {
   final int lapses;
   final double stability;
   final double difficulty;
+  final bool suspended;
 
   QuestionProgress({
     required this.id,
@@ -61,6 +73,7 @@ class QuestionProgress {
     required this.lapses,
     required this.stability,
     required this.difficulty,
+    this.suspended = false,
   });
 
   Mastery get mastery => masteryOf(reps: reps, stability: stability);
@@ -83,7 +96,7 @@ class DatabaseHelper {
   Future<Database> _init() async {
     final dir = await getDatabasesPath();
     final path = p.join(dir, 'reme.db');
-    return openDatabase(path, version: 5, onCreate: (db, _) async {
+    return openDatabase(path, version: 6, onCreate: (db, _) async {
       await _createSchema(db);
     }, onUpgrade: (db, oldVersion, _) async {
       if (oldVersion < 2) {
@@ -116,6 +129,11 @@ class DatabaseHelper {
         await db.execute(
             'ALTER TABLE daily_stats ADD COLUMN check_in_time INTEGER');
       }
+      if (oldVersion < 6) {
+        // v5 → v6：cards 加 suspended（暂停题目，不再出现在任何队列）
+        await db.execute(
+            'ALTER TABLE cards ADD COLUMN suspended INTEGER NOT NULL DEFAULT 0');
+      }
     });
   }
 
@@ -142,7 +160,8 @@ class DatabaseHelper {
         due INTEGER,
         last_review INTEGER,
         reps INTEGER NOT NULL DEFAULT 0,
-        lapses INTEGER NOT NULL DEFAULT 0
+        lapses INTEGER NOT NULL DEFAULT 0,
+        suspended INTEGER NOT NULL DEFAULT 0
       )
     ''');
     await db.execute(
@@ -243,15 +262,80 @@ class DatabaseHelper {
 
   Future<void> upsertCard(CardState card) async {
     final db = await database;
-    await db.insert('cards', {
-      'question_id': card.questionId,
-      'difficulty': card.difficulty,
-      'stability': card.stability,
-      'due': card.due?.millisecondsSinceEpoch,
-      'last_review': card.lastReview?.millisecondsSinceEpoch,
-      'reps': card.reps,
-      'lapses': card.lapses,
-    }, conflictAlgorithm: ConflictAlgorithm.replace);
+    // 用 ON CONFLICT DO UPDATE 而非 REPLACE，避免覆盖 suspended 列
+    await db.rawInsert('''
+      INSERT INTO cards (question_id, difficulty, stability, due, last_review, reps, lapses)
+      VALUES (?, ?, ?, ?, ?, ?, ?)
+      ON CONFLICT(question_id) DO UPDATE SET
+        difficulty = excluded.difficulty,
+        stability = excluded.stability,
+        due = excluded.due,
+        last_review = excluded.last_review,
+        reps = excluded.reps,
+        lapses = excluded.lapses
+    ''', [
+      card.questionId,
+      card.difficulty,
+      card.stability,
+      card.due?.millisecondsSinceEpoch,
+      card.lastReview?.millisecondsSinceEpoch,
+      card.reps,
+      card.lapses,
+    ]);
+  }
+
+  /// 暂停/恢复题目：暂停后不再出现在任何复习队列与统计中。
+  Future<void> setSuspended(String questionId, bool suspended) async {
+    final db = await database;
+    await db.rawUpdate(
+        'UPDATE cards SET suspended = ? WHERE question_id = ?',
+        [suspended ? 1 : 0, questionId]);
+  }
+
+  /// 删除卡片记录（撤销首次评分时恢复「无卡」状态用）。
+  Future<void> deleteCard(String questionId) async {
+    final db = await database;
+    await db.delete('cards',
+        where: 'question_id = ?', whereArgs: [questionId]);
+  }
+
+  /// 队列三栏计数：(新题, 学习中, 待复习)。学习中 = 有卡未掌握且到期，
+  /// 待复习 = 有卡已掌握（stability≥7）且到期。已暂停的题不计入。
+  Future<(int, int, int)> getQueueCounts() async {
+    final db = await database;
+    final now = DateTime.now().millisecondsSinceEpoch;
+    final row = (await db.rawQuery('''
+      SELECT
+        SUM(CASE WHEN c.question_id IS NULL THEN 1 ELSE 0 END) AS new_cnt,
+        SUM(CASE WHEN c.question_id IS NOT NULL
+                  AND (c.suspended IS NULL OR c.suspended = 0)
+                  AND c.due <= ?
+                  AND (c.reps = 0 OR c.stability < ?) THEN 1 ELSE 0 END) AS learning_cnt,
+        SUM(CASE WHEN c.question_id IS NOT NULL
+                  AND (c.suspended IS NULL OR c.suspended = 0)
+                  AND c.due <= ?
+                  AND c.reps > 0 AND c.stability >= ? THEN 1 ELSE 0 END) AS review_cnt
+      FROM questions q LEFT JOIN cards c ON q.id = c.question_id
+    ''', [now, masteredStabilityThreshold, now, masteredStabilityThreshold]))
+        .first;
+    return (
+      (row['new_cnt'] as num?)?.toInt() ?? 0,
+      (row['learning_cnt'] as num?)?.toInt() ?? 0,
+      (row['review_cnt'] as num?)?.toInt() ?? 0,
+    );
+  }
+
+  /// 薄弱题专项队列：lapses ≥ 2 且已到期的题（按到期先后）。
+  Future<List<Question>> getWeakQuestions() async {
+    final db = await database;
+    final now = DateTime.now().millisecondsSinceEpoch;
+    final rows = await db.rawQuery('''
+      SELECT q.* FROM questions q
+      INNER JOIN cards c ON q.id = c.question_id
+      WHERE c.lapses >= 2 AND c.due <= ? AND (c.suspended IS NULL OR c.suspended = 0)
+      ORDER BY c.due ASC
+    ''', [now]);
+    return rows.map(_questionFromRow).toList();
   }
 
   /// 全库统计：(总数, 待复习数, 已掌握数, 今日到期复习数)。
@@ -261,9 +345,9 @@ class DatabaseHelper {
     final now = DateTime.now().millisecondsSinceEpoch;
     final row = (await db.rawQuery('''
       SELECT COUNT(*) AS total,
-             SUM(CASE WHEN c.question_id IS NULL OR c.due <= ? THEN 1 ELSE 0 END) AS due,
-             SUM(CASE WHEN c.reps > 0 AND c.stability >= ? THEN 1 ELSE 0 END) AS mastered,
-             SUM(CASE WHEN c.question_id IS NOT NULL AND c.due <= ? THEN 1 ELSE 0 END) AS due_review
+             SUM(CASE WHEN c.question_id IS NULL OR (c.due <= ? AND (c.suspended IS NULL OR c.suspended = 0)) THEN 1 ELSE 0 END) AS due,
+             SUM(CASE WHEN c.reps > 0 AND c.stability >= ? AND (c.suspended IS NULL OR c.suspended = 0) THEN 1 ELSE 0 END) AS mastered,
+             SUM(CASE WHEN c.question_id IS NOT NULL AND c.due <= ? AND (c.suspended IS NULL OR c.suspended = 0) THEN 1 ELSE 0 END) AS due_review
       FROM questions q LEFT JOIN cards c ON q.id = c.question_id
     ''', [now, masteredStabilityThreshold, now])).first;
     final total = (row['total'] as num?)?.toInt() ?? 0;
@@ -285,21 +369,31 @@ class DatabaseHelper {
     return v == null ? null : (v as num).toDouble();
   }
 
-  /// 按章节分组统计。
+  /// 按章节分组统计（三栏队列：新题/学习中/复习，暂停题不计）。
   Future<List<ChapterStat>> getChapterStats() async {
     final db = await database;
     final now = DateTime.now().millisecondsSinceEpoch;
     final rows = await db.rawQuery('''
       SELECT q.chapter AS chapter, COUNT(*) AS total,
-             SUM(CASE WHEN c.question_id IS NULL OR c.due <= ? THEN 1 ELSE 0 END) AS due
+             SUM(CASE WHEN c.question_id IS NULL THEN 1 ELSE 0 END) AS new_cnt,
+             SUM(CASE WHEN c.question_id IS NOT NULL
+                       AND (c.suspended IS NULL OR c.suspended = 0)
+                       AND c.due <= ?
+                       AND (c.reps = 0 OR c.stability < ?) THEN 1 ELSE 0 END) AS learning_cnt,
+             SUM(CASE WHEN c.question_id IS NOT NULL
+                       AND (c.suspended IS NULL OR c.suspended = 0)
+                       AND c.due <= ?
+                       AND c.reps > 0 AND c.stability >= ? THEN 1 ELSE 0 END) AS review_cnt
       FROM questions q LEFT JOIN cards c ON q.id = c.question_id
       GROUP BY q.chapter ORDER BY q.chapter
-    ''', [now]);
+    ''', [now, masteredStabilityThreshold, now, masteredStabilityThreshold]);
     return rows
         .map((r) => ChapterStat(
               r['chapter'] as String,
               (r['total'] as num?)?.toInt() ?? 0,
-              (r['due'] as num?)?.toInt() ?? 0,
+              (r['new_cnt'] as num?)?.toInt() ?? 0,
+              (r['learning_cnt'] as num?)?.toInt() ?? 0,
+              (r['review_cnt'] as num?)?.toInt() ?? 0,
             ))
         .toList();
   }
@@ -312,7 +406,8 @@ class DatabaseHelper {
              COALESCE(c.reps, 0) AS reps,
              COALESCE(c.lapses, 0) AS lapses,
              COALESCE(c.stability, 0.0) AS stability,
-             COALESCE(c.difficulty, 0.0) AS difficulty
+             COALESCE(c.difficulty, 0.0) AS difficulty,
+             COALESCE(c.suspended, 0) AS suspended
       FROM questions q LEFT JOIN cards c ON q.id = c.question_id
       ORDER BY q.chapter, q.knowledge_point, q.id
     ''');
@@ -326,6 +421,7 @@ class DatabaseHelper {
               lapses: (r['lapses'] as num).toInt(),
               stability: (r['stability'] as num).toDouble(),
               difficulty: (r['difficulty'] as num).toDouble(),
+              suspended: ((r['suspended'] as num?) ?? 0) == 1,
             ))
         .toList();
   }
@@ -487,7 +583,7 @@ class DatabaseHelper {
     final rows = await db.rawQuery('''
       SELECT q.* FROM questions q
       INNER JOIN cards c ON q.id = c.question_id
-      WHERE $where
+      WHERE $where AND c.suspended = 0
       ORDER BY c.due ASC
     ''', args);
     return rows.map(_questionFromRow).toList();
@@ -515,7 +611,7 @@ class DatabaseHelper {
     final end = now.add(Duration(days: days));
     final rows = await db.rawQuery('''
       SELECT c.due FROM cards c
-      WHERE c.due IS NOT NULL AND c.due > ? AND c.due <= ?
+      WHERE c.due IS NOT NULL AND c.due > ? AND c.due <= ? AND c.suspended = 0
     ''', [now.millisecondsSinceEpoch, end.millisecondsSinceEpoch]);
     final buckets = List<int>.filled(days + 1, 0);
     final startMs = now.millisecondsSinceEpoch;

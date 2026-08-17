@@ -9,7 +9,9 @@ class SettingsService {
   static const _kNewDailyCap = 'new_daily_cap';
   static const _kWrongPos = 'wrong_review_position';
 
-  /// 错题重现位置：nearby = 2~3 题后随机，end = 队尾。
+  /// 错题重现策略：incremental = 递增间隔（2→5→10 题），
+  /// nearby = 2~3 题后随机，end = 队尾。
+  static const String wrongPosIncremental = 'incremental';
   static const String wrongPosNearby = 'nearby';
   static const String wrongPosEnd = 'end';
 
@@ -40,10 +42,10 @@ class SettingsService {
   static Future<void> setNewDailyCap(int value) async =>
       (await SharedPreferences.getInstance()).setInt(_kNewDailyCap, value);
 
-  /// 错题重现位置（默认队尾，与历史行为一致）。
+  /// 错题重现策略（默认递增间隔：第 1 次错隔 2 题、第 2 次隔 5 题、之后隔 10 题）。
   static Future<String> getWrongReviewPosition() async =>
       (await SharedPreferences.getInstance()).getString(_kWrongPos) ??
-          wrongPosEnd;
+          wrongPosIncremental;
 
   static Future<void> setWrongReviewPosition(String value) async =>
       (await SharedPreferences.getInstance()).setString(_kWrongPos, value);
