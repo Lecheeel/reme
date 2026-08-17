@@ -168,8 +168,8 @@ class _ReviewScreenState extends State<ReviewScreen> {
         's=${outcome.stability.toStringAsFixed(2)} '
         'ivl=${outcome.intervalDays}d');
 
-    // 过关判定：答对 + 评「记得/简单」记一次过关；否则清零重来
-    final pass = correct && (rating == Rating.good || rating == Rating.easy);
+    // 过关判定：答对 + 评「认识」记一次过关；模糊/忘记/答错清零重来
+    final pass = correct && rating == Rating.good;
     if (!mounted) return;
     setState(() {
       item.streak = pass ? item.streak + 1 : 0;
@@ -298,7 +298,16 @@ class _ReviewScreenState extends State<ReviewScreen> {
           else if (_submitted) ...[
             _buildResult(),
             const SizedBox(height: 16),
-            if (_outcomes != null) _buildRatingButtons(),
+            if (_isCorrect(_selected)) ...[
+              // 答对才弹记忆度选项
+              if (_outcomes != null) _buildRatingButtons(),
+            ] else ...[
+              // 答错直接归为「忘记」，只给下一题
+              FilledButton(
+                onPressed: () => _rate(Rating.again),
+                child: const Text('下一题'),
+              ),
+            ],
           ],
         ],
       ),
@@ -391,33 +400,39 @@ class _ReviewScreenState extends State<ReviewScreen> {
         Text('这次记得怎么样？', style: Theme.of(context).textTheme.titleSmall),
         const SizedBox(height: 8),
         Row(
-          children: _outcomes!
-              .map((o) => Expanded(
-                    child: Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 4),
-                      child: _ratingButton(o),
-                    ),
-                  ))
-              .toList(),
+          children: [
+            _ratingButton(Rating.good, '认识', Colors.green),
+            _ratingButton(Rating.hard, '模糊', Colors.yellow.shade600),
+            _ratingButton(Rating.again, '忘记', Colors.red),
+          ],
         ),
       ],
     );
   }
 
-  Widget _ratingButton(SchedulingOutcome o) {
-    return FilledButton.tonal(
-      onPressed: () => _rate(o.rating),
-      style: FilledButton.styleFrom(
-        padding: const EdgeInsets.symmetric(vertical: 12),
-      ),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Text(o.rating.label),
-          const SizedBox(height: 2),
-          Text(_intervalText(o.intervalDays),
-              style: const TextStyle(fontSize: 12)),
-        ],
+  Widget _ratingButton(Rating rating, String label, Color color) {
+    final outcome = _outcomes!.firstWhere((o) => o.rating == rating);
+    final dark = color.computeLuminance() > 0.5;
+    return Expanded(
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 4),
+        child: FilledButton(
+          style: FilledButton.styleFrom(
+            backgroundColor: color,
+            foregroundColor: dark ? Colors.black87 : Colors.white,
+            padding: const EdgeInsets.symmetric(vertical: 12),
+          ),
+          onPressed: () => _rate(rating),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text(label, style: const TextStyle(fontWeight: FontWeight.bold)),
+              const SizedBox(height: 2),
+              Text(_intervalText(outcome.intervalDays),
+                  style: const TextStyle(fontSize: 12)),
+            ],
+          ),
+        ),
       ),
     );
   }

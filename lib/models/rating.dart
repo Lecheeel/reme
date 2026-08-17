@@ -5,8 +5,8 @@ extension RatingX on Rating {
   /// 中文按钮文案。
   String get label => switch (this) {
         Rating.again => '忘记',
-        Rating.hard => '困难',
-        Rating.good => '记得',
+        Rating.hard => '模糊',
+        Rating.good => '认识',
         Rating.easy => '简单',
       };
 
