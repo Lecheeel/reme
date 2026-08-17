@@ -26,4 +26,4 @@ flutter:
   uses-material-design: true
 
   assets:
-    - assets/data/politics.json
+    - assets/data/politics/

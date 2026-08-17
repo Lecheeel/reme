@@ -1,0 +1,144 @@
+{
+  "version": 4,
+  "subject": "考研政治",
+  "chapter": {
+    "id": "sg",
+    "name": "中国近现代史纲要",
+    "knowledge_points": [
+      {
+        "id": "resist",
+        "name": "进入近代后中华民族的磨难与抗争",
+        "questions": [
+          {
+            "id": "zz_0008",
+            "type": "single",
+            "stem": "中国近代史上第一个不平等条约是（　）。",
+            "options": [
+              {
+                "label": "A",
+                "text": "《南京条约》"
+              },
+              {
+                "label": "B",
+                "text": "《北京条约》"
+              },
+              {
+                "label": "C",
+                "text": "《马关条约》"
+              },
+              {
+                "label": "D",
+                "text": "《辛丑条约》"
+              }
+            ],
+            "answer": [
+              "A"
+            ],
+            "explanation": "1842 年签订的《南京条约》是中国近代史上第一个不平等条约。"
+          },
+          {
+            "id": "zz_0010",
+            "type": "multiple",
+            "stem": "近代以来中国人民和中华民族面临的历史任务是（　）。",
+            "options": [
+              {
+                "label": "A",
+                "text": "争取民族独立、人民解放"
+              },
+              {
+                "label": "B",
+                "text": "实现国家富强、人民幸福"
+              },
+              {
+                "label": "C",
+                "text": "建立资产阶级共和国"
+              },
+              {
+                "label": "D",
+                "text": "彻底消灭一切阶级"
+              }
+            ],
+            "answer": [
+              "A",
+              "B"
+            ],
+            "explanation": "近代中国的两大历史任务：争取民族独立、人民解放，实现国家富强、人民幸福。"
+          }
+        ]
+      },
+      {
+        "id": "explore",
+        "name": "不同社会力量对国家出路的早期探索",
+        "questions": []
+      },
+      {
+        "id": "xinhai",
+        "name": "辛亥革命与君主专制制度的终结",
+        "questions": []
+      },
+      {
+        "id": "ccp_birth",
+        "name": "中国共产党成立和中国革命新局面",
+        "questions": [
+          {
+            "id": "zz_0009",
+            "type": "single",
+            "stem": "五四运动的直接导火索是（　）。",
+            "options": [
+              {
+                "label": "A",
+                "text": "巴黎和会上中国外交的失败"
+              },
+              {
+                "label": "B",
+                "text": "俄国十月革命的胜利"
+              },
+              {
+                "label": "C",
+                "text": "新文化运动的兴起"
+              },
+              {
+                "label": "D",
+                "text": "北洋军阀的黑暗统治"
+              }
+            ],
+            "answer": [
+              "A"
+            ],
+            "explanation": "1919 年巴黎和会上中国外交的失败是五四运动的直接导火索。"
+          }
+        ]
+      },
+      {
+        "id": "new_road",
+        "name": "中国革命的新道路",
+        "questions": []
+      },
+      {
+        "id": "anti_japan",
+        "name": "中华民族的抗日战争",
+        "questions": []
+      },
+      {
+        "id": "liberate",
+        "name": "为建立新中国而奋斗",
+        "questions": []
+      },
+      {
+        "id": "build",
+        "name": "中华人民共和国的成立与中国社会主义建设道路的探索",
+        "questions": []
+      },
+      {
+        "id": "reform_open",
+        "name": "改革开放与中国特色社会主义的开创和发展",
+        "questions": []
+      },
+      {
+        "id": "new_era_hist",
+        "name": "中国特色社会主义进入新时代",
+        "questions": []
+      }
+    ]
+  }
+}

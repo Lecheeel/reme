@@ -1,0 +1,55 @@
+{
+  "version": 4,
+  "subject": "考研政治",
+  "chapter": {
+    "id": "mzt",
+    "name": "毛泽东思想和中国特色社会主义理论体系概论",
+    "knowledge_points": [
+      {
+        "id": "sinicization",
+        "name": "马克思主义中国化时代化的历史进程与理论成果",
+        "questions": []
+      },
+      {
+        "id": "mao_place",
+        "name": "毛泽东思想及其历史地位",
+        "questions": []
+      },
+      {
+        "id": "new_demo",
+        "name": "新民主主义革命理论",
+        "questions": []
+      },
+      {
+        "id": "trans",
+        "name": "社会主义改造理论",
+        "questions": []
+      },
+      {
+        "id": "early",
+        "name": "社会主义建设道路初步探索的理论成果",
+        "questions": []
+      },
+      {
+        "id": "theory_system",
+        "name": "中国特色社会主义理论体系的形成发展",
+        "questions": []
+      },
+      {
+        "id": "deng",
+        "name": "邓小平理论",
+        "questions": []
+      },
+      {
+        "id": "three",
+        "name": "“三个代表”重要思想",
+        "questions": []
+      },
+      {
+        "id": "sci",
+        "name": "科学发展观",
+        "questions": []
+      }
+    ]
+  }
+}

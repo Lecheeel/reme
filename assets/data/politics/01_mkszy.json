@@ -1,0 +1,157 @@
+{
+  "version": 4,
+  "subject": "考研政治",
+  "chapter": {
+    "id": "mkszy",
+    "name": "马克思主义基本原理",
+    "knowledge_points": [
+      {
+        "id": "world",
+        "name": "世界的物质性及发展规律",
+        "questions": [
+          {
+            "id": "zz_0001",
+            "type": "single",
+            "stem": "马克思主义认为，物质的唯一特性是（　）。",
+            "options": [
+              {
+                "label": "A",
+                "text": "客观实在性"
+              },
+              {
+                "label": "B",
+                "text": "运动"
+              },
+              {
+                "label": "C",
+                "text": "可知性"
+              },
+              {
+                "label": "D",
+                "text": "普遍性"
+              }
+            ],
+            "answer": [
+              "A"
+            ],
+            "explanation": "物质的唯一特性是客观实在性，它存在于人的意识之外，可以为人的意识所反映。"
+          },
+          {
+            "id": "zz_0002",
+            "type": "single",
+            "stem": "唯物辩证法的实质和核心是（　）。",
+            "options": [
+              {
+                "label": "A",
+                "text": "对立统一规律"
+              },
+              {
+                "label": "B",
+                "text": "质量互变规律"
+              },
+              {
+                "label": "C",
+                "text": "否定之否定规律"
+              },
+              {
+                "label": "D",
+                "text": "普遍联系的观点"
+              }
+            ],
+            "answer": [
+              "A"
+            ],
+            "explanation": "对立统一规律揭示了事物发展的动力和源泉，是唯物辩证法的实质和核心。"
+          }
+        ]
+      },
+      {
+        "id": "practice",
+        "name": "实践与认识及其发展规律",
+        "questions": [
+          {
+            "id": "zz_0003",
+            "type": "single",
+            "stem": "马克思主义认识论首要的和基本的观点是（　）。",
+            "options": [
+              {
+                "label": "A",
+                "text": "实践的观点"
+              },
+              {
+                "label": "B",
+                "text": "唯物主义的观点"
+              },
+              {
+                "label": "C",
+                "text": "辩证法的观点"
+              },
+              {
+                "label": "D",
+                "text": "可知论的观点"
+              }
+            ],
+            "answer": [
+              "A"
+            ],
+            "explanation": "实践观点是马克思主义认识论首要的和基本的观点。"
+          },
+          {
+            "id": "zz_0004",
+            "type": "multiple",
+            "stem": "实践的基本特征包括（　）。",
+            "options": [
+              {
+                "label": "A",
+                "text": "客观物质性"
+              },
+              {
+                "label": "B",
+                "text": "自觉能动性"
+              },
+              {
+                "label": "C",
+                "text": "社会历史性"
+              },
+              {
+                "label": "D",
+                "text": "主观随意性"
+              }
+            ],
+            "answer": [
+              "A",
+              "B",
+              "C"
+            ],
+            "explanation": "实践是客观物质性的活动、自觉能动性的活动、社会历史性的活动。D 项错误，实践不是主观随意的。"
+          }
+        ]
+      },
+      {
+        "id": "society",
+        "name": "人类社会及其发展规律",
+        "questions": []
+      },
+      {
+        "id": "cap",
+        "name": "资本主义的本质及规律",
+        "questions": []
+      },
+      {
+        "id": "cap_dev",
+        "name": "资本主义的发展及其趋势",
+        "questions": []
+      },
+      {
+        "id": "soc",
+        "name": "社会主义的发展及其规律",
+        "questions": []
+      },
+      {
+        "id": "comm",
+        "name": "共产主义崇高理想及其最终实现",
+        "questions": []
+      }
+    ]
+  }
+}

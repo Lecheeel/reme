@@ -1,0 +1,184 @@
+{
+  "version": 4,
+  "subject": "考研政治",
+  "chapter": {
+    "id": "xi",
+    "name": "习近平新时代中国特色社会主义思想概论",
+    "knowledge_points": [
+      {
+        "id": "new_era",
+        "name": "新时代坚持和发展中国特色社会主义",
+        "questions": [
+          {
+            "id": "zz_0006",
+            "type": "single",
+            "stem": "新时代我国社会主要矛盾是（　）。",
+            "options": [
+              {
+                "label": "A",
+                "text": "人民日益增长的美好生活需要和不平衡不充分的发展之间的矛盾"
+              },
+              {
+                "label": "B",
+                "text": "人民日益增长的物质文化需要同落后的社会生产之间的矛盾"
+              },
+              {
+                "label": "C",
+                "text": "无产阶级和资产阶级之间的矛盾"
+              },
+              {
+                "label": "D",
+                "text": "生产力与生产关系之间的矛盾"
+              }
+            ],
+            "answer": [
+              "A"
+            ],
+            "explanation": "党的十九大指出，我国社会主要矛盾已经转化为人民日益增长的美好生活需要和不平衡不充分的发展之间的矛盾。"
+          }
+        ]
+      },
+      {
+        "id": "modernization",
+        "name": "以中国式现代化全面推进中华民族伟大复兴",
+        "questions": [
+          {
+            "id": "zz_0007",
+            "type": "single",
+            "stem": "坚持和发展中国特色社会主义的总任务是（　）。",
+            "options": [
+              {
+                "label": "A",
+                "text": "实现社会主义现代化和中华民族伟大复兴"
+              },
+              {
+                "label": "B",
+                "text": "全面建成小康社会"
+              },
+              {
+                "label": "C",
+                "text": "实现共同富裕"
+              },
+              {
+                "label": "D",
+                "text": "建成世界一流军队"
+              }
+            ],
+            "answer": [
+              "A"
+            ],
+            "explanation": "坚持和发展中国特色社会主义的总任务是实现社会主义现代化和中华民族伟大复兴。"
+          }
+        ]
+      },
+      {
+        "id": "party_lead",
+        "name": "坚持党的全面领导",
+        "questions": [
+          {
+            "id": "zz_0005",
+            "type": "single",
+            "stem": "中国特色社会主义最本质的特征是（　）。",
+            "options": [
+              {
+                "label": "A",
+                "text": "中国共产党的领导"
+              },
+              {
+                "label": "B",
+                "text": "人民当家作主"
+              },
+              {
+                "label": "C",
+                "text": "全面依法治国"
+              },
+              {
+                "label": "D",
+                "text": "共同富裕"
+              }
+            ],
+            "answer": [
+              "A"
+            ],
+            "explanation": "中国共产党领导是中国特色社会主义最本质的特征，是中国特色社会主义制度的最大优势。"
+          }
+        ]
+      },
+      {
+        "id": "people",
+        "name": "坚持以人民为中心",
+        "questions": []
+      },
+      {
+        "id": "reform",
+        "name": "全面深化改革开放",
+        "questions": []
+      },
+      {
+        "id": "economy",
+        "name": "推动高质量发展",
+        "questions": []
+      },
+      {
+        "id": "edu_talent",
+        "name": "社会主义现代化建设的教育、科技、人才战略",
+        "questions": []
+      },
+      {
+        "id": "democracy",
+        "name": "发展全过程人民民主",
+        "questions": []
+      },
+      {
+        "id": "rule_law",
+        "name": "全面依法治国",
+        "questions": [],
+        "related": [
+          "party_lead",
+          "democracy",
+          "people"
+        ]
+      },
+      {
+        "id": "culture",
+        "name": "建设社会主义文化强国",
+        "questions": []
+      },
+      {
+        "id": "livelihood",
+        "name": "以保障和改善民生为重点，加强社会建设",
+        "questions": []
+      },
+      {
+        "id": "ecology",
+        "name": "建设社会主义生态文明",
+        "questions": []
+      },
+      {
+        "id": "security",
+        "name": "维护和塑造国家安全",
+        "questions": []
+      },
+      {
+        "id": "defense",
+        "name": "建设巩固国防和强大人民军队",
+        "questions": []
+      },
+      {
+        "id": "unification",
+        "name": "坚持“一国两制”和推进祖国完全统一",
+        "questions": []
+      },
+      {
+        "id": "diplomacy",
+        "name": "中国特色大国外交和推动构建人类命运共同体",
+        "questions": []
+      },
+      {
+        "id": "party_govern",
+        "name": "全面从严治党",
+        "questions": []
+      }
+    ]
+  }
+}

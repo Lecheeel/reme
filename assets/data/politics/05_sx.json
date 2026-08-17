@@ -1,0 +1,101 @@
+{
+  "version": 4,
+  "subject": "考研政治",
+  "chapter": {
+    "id": "sx",
+    "name": "思想道德与法治",
+    "knowledge_points": [
+      {
+        "id": "mission",
+        "name": "担当复兴大任，成就时代新人",
+        "questions": []
+      },
+      {
+        "id": "life",
+        "name": "领悟人生真谛，把握人生方向",
+        "questions": []
+      },
+      {
+        "id": "ideal",
+        "name": "追求远大理想，坚定崇高信念",
+        "questions": []
+      },
+      {
+        "id": "spirit",
+        "name": "继承优良传统，弘扬中国精神",
+        "questions": [
+          {
+            "id": "zz_0012",
+            "type": "single",
+            "stem": "当代中国爱国主义的本质是（　）。",
+            "options": [
+              {
+                "label": "A",
+                "text": "坚持爱国和爱党、爱社会主义高度统一"
+              },
+              {
+                "label": "B",
+                "text": "维护国家统一和民族团结"
+              },
+              {
+                "label": "C",
+                "text": "实现中华民族伟大复兴"
+              },
+              {
+                "label": "D",
+                "text": "增强民族自尊心和自信心"
+              }
+            ],
+            "answer": [
+              "A"
+            ],
+            "explanation": "当代中国爱国主义的本质是坚持爱国和爱党、爱社会主义高度统一。"
+          }
+        ]
+      },
+      {
+        "id": "values",
+        "name": "明确价值要求，践行价值准则",
+        "questions": [
+          {
+            "id": "zz_0011",
+            "type": "single",
+            "stem": "社会主义核心价值观在个人层面的价值要求是（　）。",
+            "options": [
+              {
+                "label": "A",
+                "text": "爱国、敬业、诚信、友善"
+              },
+              {
+                "label": "B",
+                "text": "富强、民主、文明、和谐"
+              },
+              {
+                "label": "C",
+                "text": "自由、平等、公正、法治"
+              },
+              {
+                "label": "D",
+                "text": "爱国、爱党、爱社会主义"
+              }
+            ],
+            "answer": [
+              "A"
+            ],
+            "explanation": "个人层面：爱国、敬业、诚信、友善；国家层面：富强、民主、文明、和谐；社会层面：自由、平等、公正、法治。"
+          }
+        ]
+      },
+      {
+        "id": "moral",
+        "name": "遵守道德规范，锤炼道德品格",
+        "questions": []
+      },
+      {
+        "id": "law",
+        "name": "学习法治思想，提升法治素养",
+        "questions": []
+      }
+    ]
+  }
+}

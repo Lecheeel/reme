@@ -104,30 +104,34 @@ class DatabaseHelper {
         'CREATE TABLE meta (key TEXT PRIMARY KEY, value TEXT)');
   }
 
-  /// 题库种子版本比对：JSON 版本号与库里记录的不一致时，
-  /// 清空 questions 按新 JSON 重建（cards 记忆状态按题目 id 保留）。
+  /// 题库种子版本比对（按章节）：每章 JSON 的 version 与库里记录不一致时，
+  /// 只清空并重建该章的 questions（其他章和 cards 记忆状态不受影响）。
   Future<void> seedIfNeeded() async {
     final db = await database;
     final loader = QuestionBankLoader();
-    final version = await loader.loadBankVersion();
-    final stored = await _getSeedVersion(db);
-    if (stored == version) return;
+    for (final path in QuestionBankLoader.chapterFiles) {
+      final (chapterId, chapterName, version) =
+          await loader.loadChapterMeta(path);
+      final stored = await _getSeedVersion(db, chapterId);
+      if (stored == version) continue;
 
-    await db.delete('questions');
-    final questions = await loader.loadPoliticsBank();
-    await insertQuestions(questions);
-    await _setSeedVersion(db, version);
+      await db
+          .delete('questions', where: 'chapter = ?', whereArgs: [chapterName]);
+      final questions = await loader.loadChapterQuestions(path);
+      await insertQuestions(questions);
+      await _setSeedVersion(db, chapterId, version);
+    }
   }
 
-  Future<int?> _getSeedVersion(Database db) async {
-    final rows = await db
-        .query('meta', where: 'key = ?', whereArgs: ['seed_version'], limit: 1);
+  Future<int?> _getSeedVersion(Database db, String chapterId) async {
+    final rows = await db.query('meta',
+        where: 'key = ?', whereArgs: ['seed_version:$chapterId'], limit: 1);
     if (rows.isEmpty) return null;
     return int.tryParse(rows.first['value'] as String);
   }
 
-  Future<void> _setSeedVersion(Database db, int version) async {
-    await db.insert('meta', {'key': 'seed_version', 'value': '$version'},
+  Future<void> _setSeedVersion(Database db, String chapterId, int version) async {
+    await db.insert('meta', {'key': 'seed_version:$chapterId', 'value': '$version'},
         conflictAlgorithm: ConflictAlgorithm.replace);
   }
 
