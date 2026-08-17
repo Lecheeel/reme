@@ -1,5 +1,5 @@
 {
-  "version": 4,
+  "version": 5,
   "subject": "考研政治",
   "chapter": {
     "id": "mzt",
@@ -8,27 +8,250 @@
       {
         "id": "sinicization",
         "name": "马克思主义中国化时代化的历史进程与理论成果",
-        "questions": []
+        "questions": [
+          {
+            "id": "zz_0026",
+            "type": "single",
+            "stem": "马克思主义中国化第一次历史性飞跃的理论成果是（　）。",
+            "options": [
+              {
+                "label": "A",
+                "text": "毛泽东思想"
+              },
+              {
+                "label": "B",
+                "text": "邓小平理论"
+              },
+              {
+                "label": "C",
+                "text": "“三个代表”重要思想"
+              },
+              {
+                "label": "D",
+                "text": "习近平新时代中国特色社会主义思想"
+              }
+            ],
+            "answer": [
+              "A"
+            ],
+            "explanation": "毛泽东思想是马克思主义中国化的第一次历史性飞跃的理论成果。"
+          }
+        ]
       },
       {
         "id": "mao_place",
         "name": "毛泽东思想及其历史地位",
-        "questions": []
+        "questions": [
+          {
+            "id": "zz_0027",
+            "type": "single",
+            "stem": "毛泽东思想的活的灵魂是（　）。",
+            "options": [
+              {
+                "label": "A",
+                "text": "实事求是、群众路线、独立自主"
+              },
+              {
+                "label": "B",
+                "text": "统一战线、武装斗争、党的建设"
+              },
+              {
+                "label": "C",
+                "text": "理论联系实际、密切联系群众、批评与自我批评"
+              },
+              {
+                "label": "D",
+                "text": "自力更生、艰苦奋斗、勤俭节约"
+              }
+            ],
+            "answer": [
+              "A"
+            ],
+            "explanation": "实事求是、群众路线、独立自主是毛泽东思想的活的灵魂。B 是三大法宝，C 是三大作风。"
+          },
+          {
+            "id": "zz_0028",
+            "type": "single",
+            "stem": "毛泽东思想的精髓是（　）。",
+            "options": [
+              {
+                "label": "A",
+                "text": "实事求是"
+              },
+              {
+                "label": "B",
+                "text": "群众路线"
+              },
+              {
+                "label": "C",
+                "text": "独立自主"
+              },
+              {
+                "label": "D",
+                "text": "艰苦奋斗"
+              }
+            ],
+            "answer": [
+              "A"
+            ],
+            "explanation": "实事求是是毛泽东思想的精髓，是马克思主义中国化理论成果的精髓和灵魂。"
+          }
+        ]
       },
       {
         "id": "new_demo",
         "name": "新民主主义革命理论",
-        "questions": []
+        "questions": [
+          {
+            "id": "zz_0029",
+            "type": "single",
+            "stem": "新民主主义革命的对象是（　）。",
+            "options": [
+              {
+                "label": "A",
+                "text": "帝国主义、封建主义、官僚资本主义"
+              },
+              {
+                "label": "B",
+                "text": "帝国主义、封建主义、民族资本主义"
+              },
+              {
+                "label": "C",
+                "text": "封建主义、资本主义、小资产阶级"
+              },
+              {
+                "label": "D",
+                "text": "帝国主义、资本主义"
+              }
+            ],
+            "answer": [
+              "A"
+            ],
+            "explanation": "新民主主义革命的对象是帝国主义、封建主义和官僚资本主义，而非民族资本主义。"
+          },
+          {
+            "id": "zz_0030",
+            "type": "multiple",
+            "stem": "新民主主义革命的动力包括（　）。",
+            "options": [
+              {
+                "label": "A",
+                "text": "无产阶级"
+              },
+              {
+                "label": "B",
+                "text": "农民阶级"
+              },
+              {
+                "label": "C",
+                "text": "民族资产阶级"
+              },
+              {
+                "label": "D",
+                "text": "买办资产阶级"
+              }
+            ],
+            "answer": [
+              "A",
+              "B",
+              "C"
+            ],
+            "explanation": "新民主主义革命的动力包括无产阶级、农民阶级、城市小资产阶级和民族资产阶级。买办资产阶级是革命对象。"
+          }
+        ]
       },
       {
         "id": "trans",
         "name": "社会主义改造理论",
-        "questions": []
+        "questions": [
+          {
+            "id": "zz_0031",
+            "type": "single",
+            "stem": "党在过渡时期总路线的主体是（　）。",
+            "options": [
+              {
+                "label": "A",
+                "text": "实现社会主义工业化"
+              },
+              {
+                "label": "B",
+                "text": "对农业的社会主义改造"
+              },
+              {
+                "label": "C",
+                "text": "对手工业的社会主义改造"
+              },
+              {
+                "label": "D",
+                "text": "对资本主义工商业的社会主义改造"
+              }
+            ],
+            "answer": [
+              "A"
+            ],
+            "explanation": "过渡时期总路线是“一化三改”，主体是社会主义工业化，“三改”是两翼。"
+          },
+          {
+            "id": "zz_0032",
+            "type": "single",
+            "stem": "我国对资本主义工商业的社会主义改造采取的政策是（　）。",
+            "options": [
+              {
+                "label": "A",
+                "text": "和平赎买"
+              },
+              {
+                "label": "B",
+                "text": "没收"
+              },
+              {
+                "label": "C",
+                "text": "暴力剥夺"
+              },
+              {
+                "label": "D",
+                "text": "公私合营后取消资本家权益"
+              }
+            ],
+            "answer": [
+              "A"
+            ],
+            "explanation": "对资本主义工商业实行和平赎买政策，通过国家资本主义逐步过渡到社会主义。"
+          }
+        ]
       },
       {
         "id": "early",
         "name": "社会主义建设道路初步探索的理论成果",
-        "questions": []
+        "questions": [
+          {
+            "id": "zz_0033",
+            "type": "single",
+            "stem": "《论十大关系》确定的基本方针是（　）。",
+            "options": [
+              {
+                "label": "A",
+                "text": "调动一切积极因素为社会主义事业服务"
+              },
+              {
+                "label": "B",
+                "text": "以阶级斗争为纲"
+              },
+              {
+                "label": "C",
+                "text": "优先发展重工业"
+              },
+              {
+                "label": "D",
+                "text": "闭关锁国自力更生"
+              }
+            ],
+            "answer": [
+              "A"
+            ],
+            "explanation": "毛泽东《论十大关系》确定的基本方针是调动国内外一切积极因素为社会主义事业服务。"
+          }
+        ]
       },
       {
         "id": "theory_system",
@@ -38,7 +261,35 @@
       {
         "id": "deng",
         "name": "邓小平理论",
-        "questions": []
+        "questions": [
+          {
+            "id": "zz_0034",
+            "type": "single",
+            "stem": "邓小平关于社会主义本质的概括中，最终目标是（　）。",
+            "options": [
+              {
+                "label": "A",
+                "text": "共同富裕"
+              },
+              {
+                "label": "B",
+                "text": "解放和发展生产力"
+              },
+              {
+                "label": "C",
+                "text": "消灭剥削"
+              },
+              {
+                "label": "D",
+                "text": "消除两极分化"
+              }
+            ],
+            "answer": [
+              "A"
+            ],
+            "explanation": "社会主义本质：解放生产力，发展生产力，消灭剥削，消除两极分化，最终达到共同富裕。最终目标是共同富裕。"
+          }
+        ]
       },
       {
         "id": "three",

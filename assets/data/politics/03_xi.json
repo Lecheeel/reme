@@ -1,5 +1,5 @@
 {
-  "version": 4,
+  "version": 5,
   "subject": "考研政治",
   "chapter": {
     "id": "xi",
@@ -107,17 +107,101 @@
       {
         "id": "people",
         "name": "坚持以人民为中心",
-        "questions": []
+        "questions": [
+          {
+            "id": "zz_0035",
+            "type": "single",
+            "stem": "中国共产党的根本宗旨是（　）。",
+            "options": [
+              {
+                "label": "A",
+                "text": "全心全意为人民服务"
+              },
+              {
+                "label": "B",
+                "text": "实现共产主义"
+              },
+              {
+                "label": "C",
+                "text": "发展生产力"
+              },
+              {
+                "label": "D",
+                "text": "维护社会稳定"
+              }
+            ],
+            "answer": [
+              "A"
+            ],
+            "explanation": "全心全意为人民服务是中国共产党的根本宗旨，体现了坚持以人民为中心的根本立场。"
+          }
+        ]
       },
       {
         "id": "reform",
         "name": "全面深化改革开放",
-        "questions": []
+        "questions": [
+          {
+            "id": "zz_0036",
+            "type": "single",
+            "stem": "全面深化改革的总目标是（　）。",
+            "options": [
+              {
+                "label": "A",
+                "text": "完善和发展中国特色社会主义制度、推进国家治理体系和治理能力现代化"
+              },
+              {
+                "label": "B",
+                "text": "全面建成小康社会"
+              },
+              {
+                "label": "C",
+                "text": "实现社会主义现代化"
+              },
+              {
+                "label": "D",
+                "text": "建立社会主义市场经济体制"
+              }
+            ],
+            "answer": [
+              "A"
+            ],
+            "explanation": "全面深化改革的总目标是完善和发展中国特色社会主义制度、推进国家治理体系和治理能力现代化。"
+          }
+        ]
       },
       {
         "id": "economy",
         "name": "推动高质量发展",
-        "questions": []
+        "questions": [
+          {
+            "id": "zz_0037",
+            "type": "single",
+            "stem": "新时代我国经济发展的基本特征是由高速增长阶段转向（　）。",
+            "options": [
+              {
+                "label": "A",
+                "text": "高质量发展阶段"
+              },
+              {
+                "label": "B",
+                "text": "中速增长阶段"
+              },
+              {
+                "label": "C",
+                "text": "低速增长阶段"
+              },
+              {
+                "label": "D",
+                "text": "高速扩张阶段"
+              }
+            ],
+            "answer": [
+              "A"
+            ],
+            "explanation": "我国经济已由高速增长阶段转向高质量发展阶段，高质量发展是新时代我国经济发展的基本特征。"
+          }
+        ]
       },
       {
         "id": "edu_talent",
@@ -142,7 +226,35 @@
       {
         "id": "culture",
         "name": "建设社会主义文化强国",
-        "questions": []
+        "questions": [
+          {
+            "id": "zz_0038",
+            "type": "single",
+            "stem": "坚定中国特色社会主义道路自信、理论自信、制度自信，说到底是要坚定（　）。",
+            "options": [
+              {
+                "label": "A",
+                "text": "文化自信"
+              },
+              {
+                "label": "B",
+                "text": "历史自信"
+              },
+              {
+                "label": "C",
+                "text": "政治自信"
+              },
+              {
+                "label": "D",
+                "text": "民族自信"
+              }
+            ],
+            "answer": [
+              "A"
+            ],
+            "explanation": "文化自信是更基础、更广泛、更深厚的自信，四个自信说到底是要坚定文化自信。"
+          }
+        ]
       },
       {
         "id": "livelihood",

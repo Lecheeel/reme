@@ -1,5 +1,5 @@
 {
-  "version": 4,
+  "version": 5,
   "subject": "考研政治",
   "chapter": {
     "id": "sx",
@@ -8,17 +8,101 @@
       {
         "id": "mission",
         "name": "担当复兴大任，成就时代新人",
-        "questions": []
+        "questions": [
+          {
+            "id": "zz_0046",
+            "type": "single",
+            "stem": "青年一代有理想、有本领、有担当，（　）。",
+            "options": [
+              {
+                "label": "A",
+                "text": "国家就有前途，民族就有希望"
+              },
+              {
+                "label": "B",
+                "text": "就能实现个人价值"
+              },
+              {
+                "label": "C",
+                "text": "社会就必然进步"
+              },
+              {
+                "label": "D",
+                "text": "就能解决一切问题"
+              }
+            ],
+            "answer": [
+              "A"
+            ],
+            "explanation": "习近平指出：青年一代有理想、有本领、有担当，国家就有前途，民族就有希望。"
+          }
+        ]
       },
       {
         "id": "life",
         "name": "领悟人生真谛，把握人生方向",
-        "questions": []
+        "questions": [
+          {
+            "id": "zz_0047",
+            "type": "single",
+            "stem": "人生的社会价值是指（　）。",
+            "options": [
+              {
+                "label": "A",
+                "text": "个体对社会和他人所作的贡献"
+              },
+              {
+                "label": "B",
+                "text": "社会对个体的尊重和满足"
+              },
+              {
+                "label": "C",
+                "text": "个人自身的幸福感受"
+              },
+              {
+                "label": "D",
+                "text": "个体拥有财富的多少"
+              }
+            ],
+            "answer": [
+              "A"
+            ],
+            "explanation": "人生价值包括自我价值与社会价值，社会价值是个体对社会和他人所作的贡献。"
+          }
+        ]
       },
       {
         "id": "ideal",
         "name": "追求远大理想，坚定崇高信念",
-        "questions": []
+        "questions": [
+          {
+            "id": "zz_0048",
+            "type": "single",
+            "stem": "信念是认知、情感和（　）的有机统一体。",
+            "options": [
+              {
+                "label": "A",
+                "text": "意志"
+              },
+              {
+                "label": "B",
+                "text": "行动"
+              },
+              {
+                "label": "C",
+                "text": "理想"
+              },
+              {
+                "label": "D",
+                "text": "实践"
+              }
+            ],
+            "answer": [
+              "A"
+            ],
+            "explanation": "信念是人们在一定的认识基础上确立的对某种思想或事物坚信不疑并身体力行的精神状态，是认知、情感和意志的有机统一体。"
+          }
+        ]
       },
       {
         "id": "spirit",
@@ -89,7 +173,37 @@
       {
         "id": "moral",
         "name": "遵守道德规范，锤炼道德品格",
-        "questions": []
+        "questions": [
+          {
+            "id": "zz_0049",
+            "type": "multiple",
+            "stem": "下列属于社会公德主要内容的有（　）。",
+            "options": [
+              {
+                "label": "A",
+                "text": "文明礼貌"
+              },
+              {
+                "label": "B",
+                "text": "助人为乐"
+              },
+              {
+                "label": "C",
+                "text": "爱护公物"
+              },
+              {
+                "label": "D",
+                "text": "秉公执法"
+              }
+            ],
+            "answer": [
+              "A",
+              "B",
+              "C"
+            ],
+            "explanation": "社会公德主要内容：文明礼貌、助人为乐、爱护公物、保护环境、遵纪守法。秉公执法属于职业道德范畴。"
+          }
+        ]
       },
       {
         "id": "law",
