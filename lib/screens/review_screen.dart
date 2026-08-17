@@ -1,3 +1,5 @@
+import 'dart:math';
+
 import 'package:flutter/material.dart';
 
 import '../data/database.dart';
@@ -61,19 +63,23 @@ class _ReviewScreenState extends State<ReviewScreen> {
   Future<void> _load() async {
     _shuffle = await SettingsService.getShuffleOptions();
     final dailyTarget = await SettingsService.getDailyTarget();
+    final newCap = await SettingsService.getNewDailyCap();
     // 章节复习时，把该章子章节声明的 related 关联子章节（如全面依法治国
-    // 关联党的全面领导/人民民主）的到期题也一起拉出来复习
+    // 关联党的全面领导/人民民主）的到期复习题也一起拉出来复习
     List<String>? related;
     if (widget.chapter != null) {
       final extra =
           await QuestionBankLoader().loadRelatedKpIdsForChapter(widget.chapter!);
       if (extra.isNotEmpty) related = extra;
     }
-    var qs = await DatabaseHelper.instance
-        .getDueQuestions(chapter: widget.chapter, relatedKpIds: related);
-    if (qs.length > dailyTarget) {
-      qs = qs.sublist(0, dailyTarget); // 按每日学习量截断
-    }
+    // 负荷模型：复习优先全刷（不截断），剩余容量配新题
+    // 新题配额 = min(新题上限 N, max(0, 每日目标 − 当天到期复习数))
+    final reviews = await DatabaseHelper.instance
+        .getReviewQuestions(chapter: widget.chapter, relatedKpIds: related);
+    final newLimit = min(newCap, max(0, dailyTarget - reviews.length));
+    final newQs = await DatabaseHelper.instance
+        .getNewQuestions(chapter: widget.chapter, limit: newLimit);
+    final qs = [...reviews, ...newQs];
     if (!mounted) return;
     setState(() {
       _queue = qs.map((q) => _SessionItem(q)).toList();
@@ -86,7 +92,7 @@ class _ReviewScreenState extends State<ReviewScreen> {
       _resetForCurrent();
     });
     LogService.instance.log('info',
-        'review start chapter=${widget.chapter ?? "all"} count=${qs.length} target=$dailyTarget shuffle=$_shuffle related=${related?.join(",") ?? "none"}');
+        'review start chapter=${widget.chapter ?? "all"} reviews=${reviews.length} new=${newQs.length} target=$dailyTarget cap=$newCap shuffle=$_shuffle related=${related?.join(",") ?? "none"}');
   }
 
   void _resetForCurrent() {

@@ -17,13 +17,15 @@ class ChapterStat {
   ChapterStat(this.name, this.total, this.due);
 }
 
-/// 单日学习统计（daily_stats 表，供趋势图）。
+/// 单日学习统计（daily_stats 表，供趋势图与打卡）。
 class DailyStat {
   final String date; // 'YYYY-MM-DD'
   final int newCount; // 新学（首次作答）题数
   final int reviewCount; // 总作答次数
   final int correctCount; // 答对次数
   final int graduatedCount; // 过关题数
+  final bool checkedIn;
+  final DateTime? checkInTime;
 
   const DailyStat({
     required this.date,
@@ -31,11 +33,12 @@ class DailyStat {
     required this.reviewCount,
     required this.correctCount,
     required this.graduatedCount,
+    this.checkedIn = false,
+    this.checkInTime,
   });
 
   /// 当日正确率（0~1），无作答返回 0。
-  double get accuracy =>
-      reviewCount == 0 ? 0 : correctCount / reviewCount;
+  double get accuracy => reviewCount == 0 ? 0 : correctCount / reviewCount;
 }
 
 /// 单题进度：记忆状态 + 掌握程度。
@@ -80,7 +83,7 @@ class DatabaseHelper {
   Future<Database> _init() async {
     final dir = await getDatabasesPath();
     final path = p.join(dir, 'reme.db');
-    return openDatabase(path, version: 4, onCreate: (db, _) async {
+    return openDatabase(path, version: 5, onCreate: (db, _) async {
       await _createSchema(db);
     }, onUpgrade: (db, oldVersion, _) async {
       if (oldVersion < 2) {
@@ -105,6 +108,13 @@ class DatabaseHelper {
             graduated_count INTEGER NOT NULL DEFAULT 0
           )
         ''');
+      }
+      if (oldVersion < 5) {
+        // v4 → v5：daily_stats 加打卡字段
+        await db.execute(
+            'ALTER TABLE daily_stats ADD COLUMN checked_in INTEGER NOT NULL DEFAULT 0');
+        await db.execute(
+            'ALTER TABLE daily_stats ADD COLUMN check_in_time INTEGER');
       }
     });
   }
@@ -143,7 +153,9 @@ class DatabaseHelper {
         new_count INTEGER NOT NULL DEFAULT 0,
         review_count INTEGER NOT NULL DEFAULT 0,
         correct_count INTEGER NOT NULL DEFAULT 0,
-        graduated_count INTEGER NOT NULL DEFAULT 0
+        graduated_count INTEGER NOT NULL DEFAULT 0,
+        checked_in INTEGER NOT NULL DEFAULT 0,
+        check_in_time INTEGER
       )
     ''');
   }
@@ -356,6 +368,10 @@ class DatabaseHelper {
           reviewCount: (r['review_count'] as num).toInt(),
           correctCount: (r['correct_count'] as num).toInt(),
           graduatedCount: (r['graduated_count'] as num).toInt(),
+          checkedIn: ((r['checked_in'] as num?) ?? 0) == 1,
+          checkInTime: r['check_in_time'] == null
+              ? null
+              : DateTime.fromMillisecondsSinceEpoch(r['check_in_time'] as int),
         ),
     };
     // 补齐空天
@@ -370,6 +386,126 @@ class DatabaseHelper {
               graduatedCount: 0,
             ),
     ];
+  }
+
+  /// 某月的全部学习记录（日历页用），按日期升序。
+  Future<Map<String, DailyStat>> getMonthStats(int year, int month) async {
+    final db = await database;
+    final prefix = '${year.toString().padLeft(4, '0')}-'
+        '${month.toString().padLeft(2, '0')}-';
+    final rows = await db.query('daily_stats',
+        where: 'date LIKE ?', whereArgs: ['$prefix%']);
+    return {
+      for (final r in rows)
+        r['date'] as String: DailyStat(
+          date: r['date'] as String,
+          newCount: (r['new_count'] as num).toInt(),
+          reviewCount: (r['review_count'] as num).toInt(),
+          correctCount: (r['correct_count'] as num).toInt(),
+          graduatedCount: (r['graduated_count'] as num).toInt(),
+          checkedIn: ((r['checked_in'] as num?) ?? 0) == 1,
+          checkInTime: r['check_in_time'] == null
+              ? null
+              : DateTime.fromMillisecondsSinceEpoch(r['check_in_time'] as int),
+        ),
+    };
+  }
+
+  /// 今日学习记录（无则 null）。
+  Future<DailyStat?> getTodayStat() async {
+    final db = await database;
+    final rows = await db.query('daily_stats',
+        where: 'date = ?', whereArgs: [dateStr(DateTime.now())], limit: 1);
+    if (rows.isEmpty) return null;
+    return DailyStat(
+      date: rows.first['date'] as String,
+      newCount: (rows.first['new_count'] as num).toInt(),
+      reviewCount: (rows.first['review_count'] as num).toInt(),
+      correctCount: (rows.first['correct_count'] as num).toInt(),
+      graduatedCount: (rows.first['graduated_count'] as num).toInt(),
+      checkedIn: ((rows.first['checked_in'] as num?) ?? 0) == 1,
+      checkInTime: rows.first['check_in_time'] == null
+          ? null
+          : DateTime.fromMillisecondsSinceEpoch(
+              rows.first['check_in_time'] as int),
+    );
+  }
+
+  /// 打卡：标记当天已打卡。
+  Future<void> checkIn(String date) async {
+    final db = await database;
+    await db.rawUpdate(
+      'UPDATE daily_stats SET checked_in = 1, check_in_time = ? WHERE date = ?',
+      [DateTime.now().millisecondsSinceEpoch, date],
+    );
+  }
+
+  /// 连续打卡天数（从今天往回数连续 checked_in=1 的天数）。
+  Future<int> getCheckInStreak() async {
+    final db = await database;
+    final rows = await db.query('daily_stats',
+        columns: ['date', 'checked_in'], orderBy: 'date DESC');
+    final checked = <String>{
+      for (final r in rows)
+        if (((r['checked_in'] as num?) ?? 0) == 1) r['date'] as String,
+    };
+    var streak = 0;
+    var d = DateTime.now();
+    while (true) {
+      if (checked.contains(dateStr(d))) {
+        streak++;
+        d = d.subtract(const Duration(days: 1));
+      } else {
+        break;
+      }
+    }
+    return streak;
+  }
+
+  /// 到期复习题（有卡片且到期，含过期欠账），复习全刷不截断。
+  /// [relatedKpIds]：related 关联子章节的到期复习题也一并拉出。
+  Future<List<Question>> getReviewQuestions(
+      {String? chapter, List<String>? relatedKpIds}) async {
+    final db = await database;
+    final now = DateTime.now().millisecondsSinceEpoch;
+    final extra = relatedKpIds ?? const <String>[];
+    final hasExtra = extra.isNotEmpty;
+
+    final args = <Object>[now];
+    var where = 'c.due <= ?';
+    if (chapter != null || hasExtra) {
+      final parts = <String>[];
+      if (chapter != null) parts.add('q.chapter = ?');
+      if (hasExtra) {
+        parts.add(
+            'q.knowledge_point_id IN (${List.filled(extra.length, '?').join(',')})');
+      }
+      where += ' AND (${parts.join(' OR ')})';
+      if (chapter != null) args.add(chapter);
+      args.addAll(extra);
+    }
+    final rows = await db.rawQuery('''
+      SELECT q.* FROM questions q
+      INNER JOIN cards c ON q.id = c.question_id
+      WHERE $where
+      ORDER BY c.due ASC
+    ''', args);
+    return rows.map(_questionFromRow).toList();
+  }
+
+  /// 新题（无卡片），按配额取前 [limit] 道。
+  Future<List<Question>> getNewQuestions(
+      {String? chapter, int? limit}) async {
+    final db = await database;
+    final rows = await db.rawQuery('''
+      SELECT q.* FROM questions q
+      LEFT JOIN cards c ON q.id = c.question_id
+      WHERE c.question_id IS NULL
+      ${chapter == null ? '' : 'AND q.chapter = ?'}
+      ORDER BY q.id
+      LIMIT ?
+    ''', chapter == null ? [limit] : [chapter, limit]);
+    return rows.map(_questionFromRow).toList();
   }
 
   /// 未来 [days] 天每天到期的题数（含今天的到期复习），用于到期分布图。

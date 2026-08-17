@@ -14,6 +14,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
   bool _enabled = false;
   String _url = LogService.defaultUrl;
   bool _shuffle = false;
+  int _newCap = SettingsService.defaultNewDailyCap;
   bool _uploading = false;
 
   @override
@@ -24,11 +25,13 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
   Future<void> _load() async {
     final shuffle = await SettingsService.getShuffleOptions();
+    final newCap = await SettingsService.getNewDailyCap();
     if (!mounted) return;
     setState(() {
       _enabled = LogService.instance.enabled;
       _url = LogService.instance.url;
       _shuffle = shuffle;
+      _newCap = newCap;
     });
   }
 
@@ -91,6 +94,49 @@ class _SettingsScreenState extends State<SettingsScreen> {
       ..showSnackBar(SnackBar(content: Text(msg)));
   }
 
+  Future<void> _editNumber({
+    required String title,
+    required String helper,
+    required int current,
+    required int min,
+    required int max,
+    required Future<void> Function(int v) onSave,
+  }) async {
+    final controller = TextEditingController(text: '$current');
+    final result = await showDialog<int>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: Text(title),
+        content: TextField(
+          controller: controller,
+          keyboardType: TextInputType.number,
+          autofocus: true,
+          decoration: InputDecoration(helperText: helper),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text('取消'),
+          ),
+          FilledButton(
+            onPressed: () {
+              final v = int.tryParse(controller.text.trim());
+              if (v == null || v < min || v > max) {
+                ScaffoldMessenger.of(ctx)
+                  ..clearSnackBars()
+                  ..showSnackBar(SnackBar(content: Text('请输入 $min~$max 之间的整数')));
+                return;
+              }
+              Navigator.pop(ctx, v);
+            },
+            child: const Text('保存'),
+          ),
+        ],
+      ),
+    );
+    if (result != null) await onSave(result);
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -103,6 +149,32 @@ class _SettingsScreenState extends State<SettingsScreen> {
             subtitle: const Text('每次出现时选项顺序随机，避免记住位置'),
             value: _shuffle,
             onChanged: _toggleShuffle,
+          ),
+          ListTile(
+            title: const Text('每日新题上限'),
+            subtitle: const Text('每天最多接触的新题数，复习到期优先，新题自动让位'),
+            trailing: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text('$_newCap 题',
+                    style: const TextStyle(
+                        fontWeight: FontWeight.bold, fontSize: 16)),
+                const SizedBox(width: 4),
+                const Icon(Icons.edit, size: 16, color: Colors.grey),
+              ],
+            ),
+            onTap: () => _editNumber(
+              title: '每日新题上限',
+              helper: '复习优先，新题量 = min(上限, 每日目标 − 当天到期复习)',
+              current: _newCap,
+              min: 1,
+              max: 200,
+              onSave: (v) async {
+                await SettingsService.setNewDailyCap(v);
+                setState(() => _newCap = v);
+                _snack('每日新题上限已设为 $v 题');
+              },
+            ),
           ),
           const Divider(),
           const _SectionHeader('调试日志'),
