@@ -44,6 +44,16 @@ assets/data/         # politics.json (question bank)
 test/                # FSRS unit tests
 ```
 
+## Debug logging
+
+The app has an opt-in debug log that auto-uploads to your PC for analysis:
+
+1. On the PC (HWS), run the receiver: `python tools/log_receiver.py` (listens on `:8765`, saves to `~/reme-logs/`).
+2. In the app, open **设置 (Settings)** → toggle **调试日志**.
+3. Logs are captured (review actions, FSRS state, uncaught errors) and uploaded automatically after each review session — or tap **立即上传日志**.
+
+The upload URL defaults to `http://192.168.31.69:8765` and is editable in settings.
+
 ## License
 
 MIT
