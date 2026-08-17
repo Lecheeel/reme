@@ -146,18 +146,20 @@ class DatabaseHelper {
     }, conflictAlgorithm: ConflictAlgorithm.replace);
   }
 
-  /// 全库统计：(总数, 待复习数)。
-  Future<(int, int)> getSubjectStats() async {
+  /// 全库统计：(总数, 待复习数, 已掌握数)。
+  Future<(int, int, int)> getSubjectStats() async {
     final db = await database;
     final now = DateTime.now().millisecondsSinceEpoch;
     final row = (await db.rawQuery('''
       SELECT COUNT(*) AS total,
-             SUM(CASE WHEN c.question_id IS NULL OR c.due <= ? THEN 1 ELSE 0 END) AS due
+             SUM(CASE WHEN c.question_id IS NULL OR c.due <= ? THEN 1 ELSE 0 END) AS due,
+             SUM(CASE WHEN c.reps > 0 AND c.stability >= ? THEN 1 ELSE 0 END) AS mastered
       FROM questions q LEFT JOIN cards c ON q.id = c.question_id
-    ''', [now])).first;
+    ''', [now, masteredStabilityThreshold])).first;
     final total = (row['total'] as num?)?.toInt() ?? 0;
     final due = (row['due'] as num?)?.toInt() ?? 0;
-    return (total, due);
+    final mastered = (row['mastered'] as num?)?.toInt() ?? 0;
+    return (total, due, mastered);
   }
 
   /// 按章节分组统计。

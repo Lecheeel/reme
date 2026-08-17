@@ -1,6 +1,9 @@
+import 'dart:math';
+
 import 'package:flutter/material.dart';
 
 import '../data/database.dart';
+import '../data/settings_service.dart';
 import 'chapter_screen.dart';
 import 'progress_screen.dart';
 import 'review_screen.dart';
@@ -16,6 +19,9 @@ class HomeScreen extends StatefulWidget {
 class _HomeScreenState extends State<HomeScreen> {
   int _total = 0;
   int _due = 0;
+  int _mastered = 0;
+  int _dailyTarget = SettingsService.defaultDailyTarget;
+  int _estimateDays = 0;
 
   @override
   void initState() {
@@ -24,16 +30,58 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   Future<void> _refresh() async {
-    final (total, due) = await DatabaseHelper.instance.getSubjectStats();
+    final (total, due, mastered) =
+        await DatabaseHelper.instance.getSubjectStats();
+    final target = await SettingsService.getDailyTarget();
     if (!mounted) return;
     setState(() {
       _total = total;
       _due = due;
+      _mastered = mastered;
+      _dailyTarget = target;
+      final remaining = max(total - mastered, 0);
+      _estimateDays = remaining == 0 ? 0 : (remaining / target).ceil();
     });
+  }
+
+  Future<void> _editDailyTarget() async {
+    final controller = TextEditingController(text: '$_dailyTarget');
+    final result = await showDialog<int>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('每日学习量'),
+        content: TextField(
+          controller: controller,
+          keyboardType: TextInputType.number,
+          autofocus: true,
+          decoration: const InputDecoration(
+            helperText: '每天复习的题目数（默认 50）',
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text('取消'),
+          ),
+          FilledButton(
+            onPressed: () {
+              final v = int.tryParse(controller.text.trim());
+              if (v != null && v > 0) Navigator.pop(ctx, v);
+            },
+            child: const Text('保存'),
+          ),
+        ],
+      ),
+    );
+    if (result != null) {
+      await SettingsService.setDailyTarget(result);
+      await _refresh();
+    }
   }
 
   @override
   Widget build(BuildContext context) {
+    final today = min(_due, _dailyTarget);
     return Scaffold(
       appBar: AppBar(
         title: const Text('Reme'),
@@ -59,6 +107,8 @@ class _HomeScreenState extends State<HomeScreen> {
             const SizedBox(height: 16),
             _buildSubjectCard(),
             const SizedBox(height: 12),
+            _buildPlanCard(),
+            const SizedBox(height: 12),
             _buildProgressCard(),
           ],
         ),
@@ -67,7 +117,7 @@ class _HomeScreenState extends State<HomeScreen> {
           ? FloatingActionButton.extended(
               onPressed: () => _startReview(null),
               icon: const Icon(Icons.play_arrow),
-              label: Text('开始复习 ($_due)'),
+              label: Text('开始复习 (今天 $today 题)'),
             )
           : null,
     );
@@ -91,7 +141,7 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   Widget _buildSubjectCard() {
-    final mastered = _total - _due;
+    final remaining = _total - _mastered;
     return Card(
       child: ListTile(
         contentPadding: const EdgeInsets.all(16),
@@ -102,12 +152,12 @@ class _HomeScreenState extends State<HomeScreen> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text('待复习 $_due · 已掌握 $mastered · 共 $_total'),
+              Text('待复习 $_due · 已掌握 $_mastered · 待学 $remaining · 共 $_total'),
               const SizedBox(height: 12),
               ClipRRect(
                 borderRadius: BorderRadius.circular(4),
                 child: LinearProgressIndicator(
-                  value: _total == 0 ? 0 : mastered / _total,
+                  value: _total == 0 ? 0 : _mastered / _total,
                   minHeight: 6,
                 ),
               ),
@@ -120,6 +170,41 @@ class _HomeScreenState extends State<HomeScreen> {
             MaterialPageRoute(builder: (_) => const ChapterScreen()),
           );
         },
+      ),
+    );
+  }
+
+  Widget _buildPlanCard() {
+    return Card(
+      child: Column(
+        children: [
+          ListTile(
+            leading: const Icon(Icons.track_changes, color: Colors.indigo),
+            title: const Text('每日学习量'),
+            trailing: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text('$_dailyTarget 题',
+                    style: const TextStyle(
+                        fontWeight: FontWeight.bold, fontSize: 16)),
+                const SizedBox(width: 4),
+                const Icon(Icons.edit, size: 16, color: Colors.grey),
+              ],
+            ),
+            onTap: _editDailyTarget,
+          ),
+          ListTile(
+            leading: const Icon(Icons.event_available, color: Colors.teal),
+            title: const Text('预计学习天数'),
+            subtitle: Text(_estimateDays == 0
+                ? '全部掌握，无待学'
+                : '剩余 ${_total - _mastered} 题 ÷ 每天 $_dailyTarget 题'),
+            trailing: Text(
+              _estimateDays == 0 ? '—' : '$_estimateDays 天',
+              style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+            ),
+          ),
+        ],
       ),
     );
   }

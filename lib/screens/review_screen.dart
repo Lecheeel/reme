@@ -54,8 +54,12 @@ class _ReviewScreenState extends State<ReviewScreen> {
 
   Future<void> _load() async {
     _shuffle = await SettingsService.getShuffleOptions();
-    final qs =
+    final dailyTarget = await SettingsService.getDailyTarget();
+    var qs =
         await DatabaseHelper.instance.getDueQuestions(chapter: widget.chapter);
+    if (qs.length > dailyTarget) {
+      qs = qs.sublist(0, dailyTarget); // 按每日学习量截断
+    }
     if (!mounted) return;
     setState(() {
       _queue = qs.map((q) => _SessionItem(q)).toList();
@@ -67,7 +71,7 @@ class _ReviewScreenState extends State<ReviewScreen> {
       _resetForCurrent();
     });
     LogService.instance.log('info',
-        'review start chapter=${widget.chapter ?? "all"} count=${qs.length} shuffle=$_shuffle');
+        'review start chapter=${widget.chapter ?? "all"} count=${qs.length} target=$dailyTarget shuffle=$_shuffle');
   }
 
   void _resetForCurrent() {
