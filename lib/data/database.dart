@@ -57,46 +57,72 @@ class DatabaseHelper {
   Future<Database> _init() async {
     final dir = await getDatabasesPath();
     final path = p.join(dir, 'reme.db');
-    return openDatabase(path, version: 1, onCreate: (db, _) async {
-      await db.execute('''
-        CREATE TABLE questions (
-          id TEXT PRIMARY KEY,
-          subject TEXT NOT NULL,
-          chapter TEXT NOT NULL,
-          knowledge_point TEXT NOT NULL,
-          type TEXT NOT NULL,
-          stem TEXT NOT NULL,
-          options TEXT NOT NULL,
-          answer TEXT NOT NULL,
-          explanation TEXT NOT NULL
-        )
-      ''');
-      await db.execute('''
-        CREATE TABLE cards (
-          question_id TEXT PRIMARY KEY,
-          difficulty REAL NOT NULL DEFAULT 0,
-          stability REAL NOT NULL DEFAULT 0,
-          due INTEGER,
-          last_review INTEGER,
-          reps INTEGER NOT NULL DEFAULT 0,
-          lapses INTEGER NOT NULL DEFAULT 0
-        )
-      ''');
+    return openDatabase(path, version: 2, onCreate: (db, _) async {
+      await _createSchema(db);
+    }, onUpgrade: (db, oldVersion, _) async {
+      if (oldVersion < 2) {
+        // v1 → v2：新增 meta 表（存题库种子版本号），并重建题库为新骨架
+        await db.execute(
+            'CREATE TABLE IF NOT EXISTS meta (key TEXT PRIMARY KEY, value TEXT)');
+        await db.delete('questions');
+      }
     });
   }
 
-  /// 首次启动时若题库为空，从内置 JSON 导入示例政治题库。
-  Future<void> seedIfEmpty() async {
+  Future<void> _createSchema(Database db) async {
+    await db.execute('''
+      CREATE TABLE questions (
+        id TEXT PRIMARY KEY,
+        subject TEXT NOT NULL,
+        chapter TEXT NOT NULL,
+        knowledge_point TEXT NOT NULL,
+        type TEXT NOT NULL,
+        stem TEXT NOT NULL,
+        options TEXT NOT NULL,
+        answer TEXT NOT NULL,
+        explanation TEXT NOT NULL
+      )
+    ''');
+    await db.execute('''
+      CREATE TABLE cards (
+        question_id TEXT PRIMARY KEY,
+        difficulty REAL NOT NULL DEFAULT 0,
+        stability REAL NOT NULL DEFAULT 0,
+        due INTEGER,
+        last_review INTEGER,
+        reps INTEGER NOT NULL DEFAULT 0,
+        lapses INTEGER NOT NULL DEFAULT 0
+      )
+    ''');
+    await db.execute(
+        'CREATE TABLE meta (key TEXT PRIMARY KEY, value TEXT)');
+  }
+
+  /// 题库种子版本比对：JSON 版本号与库里记录的不一致时，
+  /// 清空 questions 按新 JSON 重建（cards 记忆状态按题目 id 保留）。
+  Future<void> seedIfNeeded() async {
     final db = await database;
-    final count = Sqflite.firstIntValue(
-          await db.rawQuery('SELECT COUNT(*) FROM questions'),
-        ) ??
-        0;
-    if (count == 0) {
-      final loader = QuestionBankLoader();
-      final questions = await loader.loadPoliticsBank();
-      await insertQuestions(questions);
-    }
+    final loader = QuestionBankLoader();
+    final version = await loader.loadBankVersion();
+    final stored = await _getSeedVersion(db);
+    if (stored == version) return;
+
+    await db.delete('questions');
+    final questions = await loader.loadPoliticsBank();
+    await insertQuestions(questions);
+    await _setSeedVersion(db, version);
+  }
+
+  Future<int?> _getSeedVersion(Database db) async {
+    final rows = await db
+        .query('meta', where: 'key = ?', whereArgs: ['seed_version'], limit: 1);
+    if (rows.isEmpty) return null;
+    return int.tryParse(rows.first['value'] as String);
+  }
+
+  Future<void> _setSeedVersion(Database db, int version) async {
+    await db.insert('meta', {'key': 'seed_version', 'value': '$version'},
+        conflictAlgorithm: ConflictAlgorithm.replace);
   }
 
   Future<void> insertQuestions(List<Question> questions) async {

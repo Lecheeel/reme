@@ -18,7 +18,7 @@ Future<void> main() async {
     return true;
   };
 
-  await DatabaseHelper.instance.seedIfEmpty();
+  await DatabaseHelper.instance.seedIfNeeded();
   LogService.instance.log('info', 'app started');
   runApp(const RemeApp());
 }
