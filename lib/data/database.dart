@@ -17,6 +17,27 @@ class ChapterStat {
   ChapterStat(this.name, this.total, this.due);
 }
 
+/// 单日学习统计（daily_stats 表，供趋势图）。
+class DailyStat {
+  final String date; // 'YYYY-MM-DD'
+  final int newCount; // 新学（首次作答）题数
+  final int reviewCount; // 总作答次数
+  final int correctCount; // 答对次数
+  final int graduatedCount; // 过关题数
+
+  const DailyStat({
+    required this.date,
+    required this.newCount,
+    required this.reviewCount,
+    required this.correctCount,
+    required this.graduatedCount,
+  });
+
+  /// 当日正确率（0~1），无作答返回 0。
+  double get accuracy =>
+      reviewCount == 0 ? 0 : correctCount / reviewCount;
+}
+
 /// 单题进度：记忆状态 + 掌握程度。
 class QuestionProgress {
   final String id;
@@ -26,6 +47,7 @@ class QuestionProgress {
   final int reps;
   final int lapses;
   final double stability;
+  final double difficulty;
 
   QuestionProgress({
     required this.id,
@@ -35,6 +57,7 @@ class QuestionProgress {
     required this.reps,
     required this.lapses,
     required this.stability,
+    required this.difficulty,
   });
 
   Mastery get mastery => masteryOf(reps: reps, stability: stability);
@@ -57,7 +80,7 @@ class DatabaseHelper {
   Future<Database> _init() async {
     final dir = await getDatabasesPath();
     final path = p.join(dir, 'reme.db');
-    return openDatabase(path, version: 3, onCreate: (db, _) async {
+    return openDatabase(path, version: 4, onCreate: (db, _) async {
       await _createSchema(db);
     }, onUpgrade: (db, oldVersion, _) async {
       if (oldVersion < 2) {
@@ -70,6 +93,18 @@ class DatabaseHelper {
         // v2 → v3：questions 表加 knowledge_point_id（子章节 id，供 related 关联复习）
         await db.execute(
             'ALTER TABLE questions ADD COLUMN knowledge_point_id TEXT');
+      }
+      if (oldVersion < 4) {
+        // v3 → v4：daily_stats 表（每日学习统计，供趋势图）
+        await db.execute('''
+          CREATE TABLE IF NOT EXISTS daily_stats (
+            date TEXT PRIMARY KEY,
+            new_count INTEGER NOT NULL DEFAULT 0,
+            review_count INTEGER NOT NULL DEFAULT 0,
+            correct_count INTEGER NOT NULL DEFAULT 0,
+            graduated_count INTEGER NOT NULL DEFAULT 0
+          )
+        ''');
       }
     });
   }
@@ -102,6 +137,15 @@ class DatabaseHelper {
     ''');
     await db.execute(
         'CREATE TABLE meta (key TEXT PRIMARY KEY, value TEXT)');
+    await db.execute('''
+      CREATE TABLE daily_stats (
+        date TEXT PRIMARY KEY,
+        new_count INTEGER NOT NULL DEFAULT 0,
+        review_count INTEGER NOT NULL DEFAULT 0,
+        correct_count INTEGER NOT NULL DEFAULT 0,
+        graduated_count INTEGER NOT NULL DEFAULT 0
+      )
+    ''');
   }
 
   /// 题库种子版本比对（按章节）：每章 JSON 的 version 与库里记录不一致时，
@@ -255,7 +299,8 @@ class DatabaseHelper {
       SELECT q.id, q.chapter, q.knowledge_point, q.stem,
              COALESCE(c.reps, 0) AS reps,
              COALESCE(c.lapses, 0) AS lapses,
-             COALESCE(c.stability, 0.0) AS stability
+             COALESCE(c.stability, 0.0) AS stability,
+             COALESCE(c.difficulty, 0.0) AS difficulty
       FROM questions q LEFT JOIN cards c ON q.id = c.question_id
       ORDER BY q.chapter, q.knowledge_point, q.id
     ''');
@@ -268,9 +313,91 @@ class DatabaseHelper {
               reps: (r['reps'] as num).toInt(),
               lapses: (r['lapses'] as num).toInt(),
               stability: (r['stability'] as num).toDouble(),
+              difficulty: (r['difficulty'] as num).toDouble(),
             ))
         .toList();
   }
+
+  /// 累加写入某天的学习统计（按日期 upsert，同一天多次复习累加）。
+  Future<void> upsertDailyStat(DailyStat stat) async {
+    final db = await database;
+    await db.rawInsert('''
+      INSERT INTO daily_stats (date, new_count, review_count, correct_count, graduated_count)
+      VALUES (?, ?, ?, ?, ?)
+      ON CONFLICT(date) DO UPDATE SET
+        new_count = new_count + excluded.new_count,
+        review_count = review_count + excluded.review_count,
+        correct_count = correct_count + excluded.correct_count,
+        graduated_count = graduated_count + excluded.graduated_count
+    ''', [
+      stat.date,
+      stat.newCount,
+      stat.reviewCount,
+      stat.correctCount,
+      stat.graduatedCount,
+    ]);
+  }
+
+  /// 最近 [days] 天的学习统计（含空天占位），按日期升序。
+  Future<List<DailyStat>> getDailyStats(int days) async {
+    final db = await database;
+    final today = DateTime.now();
+    final start = DateTime(today.year, today.month, today.day)
+        .subtract(Duration(days: days - 1));
+    final rows = await db.rawQuery('''
+      SELECT * FROM daily_stats WHERE date >= ?
+      ORDER BY date
+    ''', [dateStr(start)]);
+    final map = <String, DailyStat>{
+      for (final r in rows)
+        r['date'] as String: DailyStat(
+          date: r['date'] as String,
+          newCount: (r['new_count'] as num).toInt(),
+          reviewCount: (r['review_count'] as num).toInt(),
+          correctCount: (r['correct_count'] as num).toInt(),
+          graduatedCount: (r['graduated_count'] as num).toInt(),
+        ),
+    };
+    // 补齐空天
+    return [
+      for (var i = 0; i < days; i++)
+        map[dateStr(start.add(Duration(days: i)))] ??
+            DailyStat(
+              date: dateStr(start.add(Duration(days: i))),
+              newCount: 0,
+              reviewCount: 0,
+              correctCount: 0,
+              graduatedCount: 0,
+            ),
+    ];
+  }
+
+  /// 未来 [days] 天每天到期的题数（含今天的到期复习），用于到期分布图。
+  Future<List<int>> getDueDistribution(int days) async {
+    final db = await database;
+    final now = DateTime.now();
+    final end = now.add(Duration(days: days));
+    final rows = await db.rawQuery('''
+      SELECT c.due FROM cards c
+      WHERE c.due IS NOT NULL AND c.due > ? AND c.due <= ?
+    ''', [now.millisecondsSinceEpoch, end.millisecondsSinceEpoch]);
+    final buckets = List<int>.filled(days + 1, 0);
+    final startMs = now.millisecondsSinceEpoch;
+    for (final r in rows) {
+      final due = r['due'] as int;
+      final dayIdx = ((due - startMs) / Duration.millisecondsPerDay)
+          .floor()
+          .clamp(0, days);
+      buckets[dayIdx]++;
+    }
+    return buckets;
+  }
+
+  /// 'YYYY-MM-DD' 本地日期字符串。
+  static String dateStr(DateTime d) =>
+      '${d.year.toString().padLeft(4, '0')}-'
+      '${d.month.toString().padLeft(2, '0')}-'
+      '${d.day.toString().padLeft(2, '0')}';
 
   Map<String, dynamic> _questionToRow(Question q) => {
         'id': q.id,

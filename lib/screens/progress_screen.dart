@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../data/database.dart';
 import '../models/mastery.dart';
+import '../widgets/charts.dart';
 
 class ProgressScreen extends StatefulWidget {
   const ProgressScreen({super.key});
@@ -13,6 +14,8 @@ class ProgressScreen extends StatefulWidget {
 class _ProgressScreenState extends State<ProgressScreen> {
   bool _loading = true;
   List<QuestionProgress> _items = [];
+  List<DailyStat> _trend = [];
+  List<int> _dueDistribution = [];
 
   @override
   void initState() {
@@ -21,10 +24,15 @@ class _ProgressScreenState extends State<ProgressScreen> {
   }
 
   Future<void> _load() async {
-    final items = await DatabaseHelper.instance.getProgress();
+    final db = DatabaseHelper.instance;
+    final items = await db.getProgress();
+    final trend = await db.getDailyStats(14);
+    final dueDist = await db.getDueDistribution(7);
     if (!mounted) return;
     setState(() {
       _items = items;
+      _trend = trend;
+      _dueDistribution = dueDist;
       _loading = false;
     });
   }
@@ -38,38 +46,70 @@ class _ProgressScreenState extends State<ProgressScreen> {
     final fuzzy = _items.where((e) => e.mastery == Mastery.fuzzy).length;
     final newCount = _items.where((e) => e.mastery == Mastery.newCard).length;
 
-    // 按章节分组
+    // 按章节分组统计三态
     final grouped = <String, List<QuestionProgress>>{};
     for (final e in _items) {
       grouped.putIfAbsent(e.chapter, () => []).add(e);
     }
+    final chapterStats = <(String, int, int, int)>[
+      for (final entry in grouped.entries)
+        (
+          entry.key,
+          entry.value.where((e) => e.mastery == Mastery.mastered).length,
+          entry.value.where((e) => e.mastery == Mastery.fuzzy).length,
+          entry.value.where((e) => e.mastery == Mastery.newCard).length,
+        ),
+    ];
 
     return Scaffold(
       appBar: AppBar(title: const Text('学习进度')),
-      body: ListView(
-        children: [
-          Padding(
-            padding: const EdgeInsets.all(16),
-            child: Row(
-              children: [
-                _StatCard(label: '掌握', count: mastered, color: Colors.green),
-                _StatCard(label: '模糊', count: fuzzy, color: Colors.orange),
-                _StatCard(label: '未学', count: newCount, color: Colors.grey),
-              ],
-            ),
-          ),
-          for (final entry in grouped.entries) ...[
+      body: RefreshIndicator(
+        onRefresh: _load,
+        child: ListView(
+          padding: const EdgeInsets.symmetric(vertical: 12),
+          children: [
             Padding(
-              padding: const EdgeInsets.fromLTRB(16, 8, 16, 4),
-              child: Text(
-                entry.key,
-                style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 15),
+              padding: const EdgeInsets.symmetric(horizontal: 16),
+              child: Row(
+                children: [
+                  _StatCard(label: '掌握', count: mastered, color: Colors.green),
+                  _StatCard(label: '模糊', count: fuzzy, color: Colors.orange),
+                  _StatCard(label: '未学', count: newCount, color: Colors.grey),
+                ],
               ),
             ),
-            ...entry.value.map(_buildItem),
+            const SizedBox(height: 8),
+            MasteryDonutChart(
+              mastered: mastered,
+              fuzzy: fuzzy,
+              newCount: newCount,
+            ),
+            ChapterStackedBarChart(chapters: chapterStats),
+            DueDistributionChart(dueByDay: _dueDistribution),
+            MemoryScatterChart(items: _items),
+            DailyTrendChart(stats: _trend),
+            const SizedBox(height: 8),
+            const Padding(
+              padding: EdgeInsets.symmetric(horizontal: 16),
+              child: Text(
+                '题目明细',
+                style: TextStyle(fontWeight: FontWeight.bold, fontSize: 15),
+              ),
+            ),
+            for (final entry in grouped.entries) ...[
+              Padding(
+                padding: const EdgeInsets.fromLTRB(16, 8, 16, 4),
+                child: Text(
+                  entry.key,
+                  style: const TextStyle(
+                      fontWeight: FontWeight.bold, fontSize: 14),
+                ),
+              ),
+              ...entry.value.map(_buildItem),
+            ],
+            const SizedBox(height: 16),
           ],
-          const SizedBox(height: 16),
-        ],
+        ),
       ),
     );
   }

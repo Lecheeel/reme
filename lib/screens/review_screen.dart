@@ -49,6 +49,7 @@ class _ReviewScreenState extends State<ReviewScreen> {
   Set<String> _selected = {};
   bool _submitted = false;
   bool _firstTry = false; // 当前题是否为初次作答
+  int _newFirstTries = 0; // 本会话首次作答的题数（埋点用）
   List<SchedulingOutcome>? _outcomes;
 
   @override
@@ -80,6 +81,7 @@ class _ReviewScreenState extends State<ReviewScreen> {
       _graduated = 0;
       _attempts = 0;
       _correctAttempts = 0;
+      _newFirstTries = 0;
       _loading = false;
       _resetForCurrent();
     });
@@ -146,6 +148,7 @@ class _ReviewScreenState extends State<ReviewScreen> {
     setState(() {
       _submitted = true;
       _firstTry = item.attempts == 0; // 本题在本会话内第一次作答
+      if (_firstTry) _newFirstTries++;
       item.attempts++;
       _attempts++;
       if (correct) _correctAttempts++;
@@ -212,6 +215,14 @@ class _ReviewScreenState extends State<ReviewScreen> {
         LogService.instance.log('info',
             'review done graduated=$_graduated/$_total attempts=$_attempts correct=$_correctAttempts');
         LogService.instance.upload(); // 自动上传日志
+        // 写入今日学习统计（趋势图数据源）
+        DatabaseHelper.instance.upsertDailyStat(DailyStat(
+          date: DatabaseHelper.dateStr(DateTime.now()),
+          newCount: _newFirstTries,
+          reviewCount: _attempts,
+          correctCount: _correctAttempts,
+          graduatedCount: _graduated,
+        ));
       }
       _resetForCurrent();
     });
