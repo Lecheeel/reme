@@ -57,14 +57,19 @@ class DatabaseHelper {
   Future<Database> _init() async {
     final dir = await getDatabasesPath();
     final path = p.join(dir, 'reme.db');
-    return openDatabase(path, version: 2, onCreate: (db, _) async {
+    return openDatabase(path, version: 3, onCreate: (db, _) async {
       await _createSchema(db);
     }, onUpgrade: (db, oldVersion, _) async {
       if (oldVersion < 2) {
-        // v1 → v2：新增 meta 表（存题库种子版本号），并重建题库为新骨架
+        // v1 → v2：新增 meta 表（存题库种子版本号）
         await db.execute(
             'CREATE TABLE IF NOT EXISTS meta (key TEXT PRIMARY KEY, value TEXT)');
         await db.delete('questions');
+      }
+      if (oldVersion < 3) {
+        // v2 → v3：questions 表加 knowledge_point_id（子章节 id，供 related 关联复习）
+        await db.execute(
+            'ALTER TABLE questions ADD COLUMN knowledge_point_id TEXT');
       }
     });
   }
@@ -76,6 +81,7 @@ class DatabaseHelper {
         subject TEXT NOT NULL,
         chapter TEXT NOT NULL,
         knowledge_point TEXT NOT NULL,
+        knowledge_point_id TEXT,
         type TEXT NOT NULL,
         stem TEXT NOT NULL,
         options TEXT NOT NULL,
@@ -136,16 +142,32 @@ class DatabaseHelper {
   }
 
   /// 待复习题目：无卡片记录（新题）或已到期。
-  Future<List<Question>> getDueQuestions({String? chapter}) async {
+  /// [relatedKpIds]：子章节 related 关联复习——这些子章节的到期题也会一起拉出。
+  Future<List<Question>> getDueQuestions(
+      {String? chapter, List<String>? relatedKpIds}) async {
     final db = await database;
     final now = DateTime.now().millisecondsSinceEpoch;
-    final args = chapter == null ? [now] : [now, chapter];
-    final chapterFilter = chapter == null ? '' : 'AND q.chapter = ?';
+    final extra = relatedKpIds ?? const <String>[];
+    final hasExtra = extra.isNotEmpty;
+
+    final args = <Object>[now];
+    var where = 'c.question_id IS NULL OR c.due <= ?';
+    if (chapter != null || hasExtra) {
+      final parts = <String>[];
+      if (chapter != null) parts.add('q.chapter = ?');
+      if (hasExtra) {
+        parts.add(
+            'q.knowledge_point_id IN (${List.filled(extra.length, '?').join(',')})');
+      }
+      where += ' AND (${parts.join(' OR ')})';
+      if (chapter != null) args.add(chapter);
+      args.addAll(extra);
+    }
+
     final rows = await db.rawQuery('''
       SELECT q.* FROM questions q
       LEFT JOIN cards c ON q.id = c.question_id
-      WHERE c.question_id IS NULL OR c.due <= ?
-      $chapterFilter
+      WHERE $where
       ORDER BY (c.question_id IS NULL) DESC, c.due ASC
     ''', args);
     return rows.map(_questionFromRow).toList();
@@ -236,6 +258,7 @@ class DatabaseHelper {
         'subject': q.subject,
         'chapter': q.chapter,
         'knowledge_point': q.knowledgePoint,
+        'knowledge_point_id': q.knowledgePointId,
         'type': q.type.name,
         'stem': q.stem,
         'options': jsonEncode(q.options.map((o) => o.toJson()).toList()),
@@ -248,6 +271,7 @@ class DatabaseHelper {
         subject: row['subject'] as String,
         chapter: row['chapter'] as String,
         knowledgePoint: row['knowledge_point'] as String,
+        knowledgePointId: (row['knowledge_point_id'] as String?) ?? '',
         type: QuestionType.fromName(row['type'] as String),
         stem: row['stem'] as String,
         options: (jsonDecode(row['options'] as String) as List)

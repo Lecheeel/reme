@@ -32,6 +32,9 @@ class Question {
   final String subject;
   final String chapter;
   final String knowledgePoint;
+
+  /// 子章节 id（knowledge_points 的 id 字段），用于 related 关联复习等。
+  final String knowledgePointId;
   final QuestionType type;
   final String stem;
   final List<QuestionOption> options;
@@ -43,6 +46,7 @@ class Question {
     required this.subject,
     required this.chapter,
     required this.knowledgePoint,
+    required this.knowledgePointId,
     required this.type,
     required this.stem,
     required this.options,
@@ -55,12 +59,14 @@ class Question {
     required String subject,
     required String chapter,
     required String knowledgePoint,
+    required String knowledgePointId,
   }) =>
       Question(
         id: json['id'] as String,
         subject: subject,
         chapter: chapter,
         knowledgePoint: knowledgePoint,
+        knowledgePointId: knowledgePointId,
         type: QuestionType.fromName(json['type'] as String),
         stem: json['stem'] as String,
         options: (json['options'] as List)
