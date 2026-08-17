@@ -1,7 +1,10 @@
 import 'package:flutter/material.dart';
+import 'package:package_info_plus/package_info_plus.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 import '../data/log_service.dart';
 import '../data/settings_service.dart';
+import '../data/update_checker.dart';
 
 class SettingsScreen extends StatefulWidget {
   const SettingsScreen({super.key});
@@ -17,6 +20,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
   int _newCap = SettingsService.defaultNewDailyCap;
   String _wrongPos = SettingsService.wrongPosEnd;
   bool _uploading = false;
+  String _version = ''; // 当前版本号
+  bool _checkingUpdate = false;
 
   @override
   void initState() {
@@ -28,6 +33,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
     final shuffle = await SettingsService.getShuffleOptions();
     final newCap = await SettingsService.getNewDailyCap();
     final wrongPos = await SettingsService.getWrongReviewPosition();
+    final info = await PackageInfo.fromPlatform();
     if (!mounted) return;
     setState(() {
       _enabled = LogService.instance.enabled;
@@ -35,7 +41,50 @@ class _SettingsScreenState extends State<SettingsScreen> {
       _shuffle = shuffle;
       _newCap = newCap;
       _wrongPos = wrongPos;
+      _version = info.version;
     });
+  }
+
+  Future<void> _checkUpdate() async {
+    setState(() => _checkingUpdate = true);
+    final latest = await UpdateChecker.fetchLatestVersion();
+    if (!mounted) return;
+    setState(() => _checkingUpdate = false);
+    if (latest == null) {
+      _snack('检查失败（网络不可用或 GitHub 未响应）');
+      return;
+    }
+    if (UpdateChecker.isNewer(latest, _version)) {
+      showDialog<void>(
+        context: context,
+        builder: (ctx) => AlertDialog(
+          title: Text('发现新版本 v$latest'),
+          content: Text('当前版本 v$_version，前往 GitHub Releases 下载更新。'),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(ctx),
+              child: const Text('稍后'),
+            ),
+            FilledButton(
+              onPressed: () {
+                Navigator.pop(ctx);
+                _openReleases();
+              },
+              child: const Text('前往下载'),
+            ),
+          ],
+        ),
+      );
+    } else {
+      _snack('当前已是最新版本 v$_version');
+    }
+  }
+
+  Future<void> _openReleases() async {
+    final url = Uri.parse(UpdateChecker.releasesUrl);
+    if (await canLaunchUrl(url)) {
+      await launchUrl(url, mode: LaunchMode.externalApplication);
+    }
   }
 
   Future<void> _toggleLog(bool value) async {
@@ -146,6 +195,20 @@ class _SettingsScreenState extends State<SettingsScreen> {
       appBar: AppBar(title: const Text('设置')),
       body: ListView(
         children: [
+          ListTile(
+            leading: const Icon(Icons.system_update, color: Colors.blue),
+            title: const Text('检查更新'),
+            subtitle: Text('当前版本 v$_version · GitHub Releases'),
+            trailing: _checkingUpdate
+                ? const SizedBox(
+                    width: 18,
+                    height: 18,
+                    child: CircularProgressIndicator(strokeWidth: 2),
+                  )
+                : const Icon(Icons.chevron_right),
+            onTap: _checkingUpdate ? null : _checkUpdate,
+          ),
+          const Divider(),
           const _SectionHeader('复习'),
           SwitchListTile(
             title: const Text('打乱选项'),

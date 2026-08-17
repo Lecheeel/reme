@@ -1,10 +1,13 @@
 import 'dart:math';
 
 import 'package:flutter/material.dart';
+import 'package:package_info_plus/package_info_plus.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 import '../data/database.dart';
 import '../data/log_service.dart';
 import '../data/settings_service.dart';
+import '../data/update_checker.dart';
 import 'calendar_screen.dart';
 import 'chapter_screen.dart';
 import 'progress_screen.dart';
@@ -32,11 +35,50 @@ class _HomeScreenState extends State<HomeScreen> {
   DailyStat? _today; // 今日学习统计（打卡用）
   int _streak = 0; // 连续打卡天数
   bool _showHomeOverride = false; // 打卡后点「加强巩固」临时回到主页（下次进 App 仍默认小结页）
+  bool _updateShown = false; // 本次会话是否已提示过更新
 
   @override
   void initState() {
     super.initState();
     _refresh();
+    _checkForUpdate();
+  }
+
+  /// 启动时静默检查 GitHub 最新 Release，有新版本弹窗提示。
+  Future<void> _checkForUpdate() async {
+    final latest = await UpdateChecker.fetchLatestVersion();
+    final info = await PackageInfo.fromPlatform();
+    if (latest == null || !UpdateChecker.isNewer(latest, info.version)) return;
+    if (!mounted || _updateShown) return;
+    _updateShown = true;
+    showDialog<void>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        icon: const Icon(Icons.system_update, color: Colors.blue, size: 32),
+        title: Text('发现新版本 v$latest'),
+        content: Text('当前版本 v${info.version}，前往 GitHub Releases 下载更新。'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text('稍后'),
+          ),
+          FilledButton(
+            onPressed: () {
+              Navigator.pop(ctx);
+              _openReleases();
+            },
+            child: const Text('前往下载'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Future<void> _openReleases() async {
+    final url = Uri.parse(UpdateChecker.releasesUrl);
+    if (await canLaunchUrl(url)) {
+      await launchUrl(url, mode: LaunchMode.externalApplication);
+    }
   }
 
   Future<void> _refresh() async {
