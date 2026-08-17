@@ -198,33 +198,32 @@ class _SettingsScreenState extends State<SettingsScreen> {
                           style: TextStyle(
                               fontWeight: FontWeight.bold, fontSize: 16)),
                     ),
-                    RadioListTile<String>(
-                      title: const Text('2~3 题后随机出现'),
-                      subtitle: const Text('趁热重练，错题很快再遇到'),
-                      value: SettingsService.wrongPosNearby,
+                    RadioGroup<String>(
                       groupValue: _wrongPos,
-                      onChanged: (v) async {
-                        if (v != null) {
-                          await SettingsService.setWrongReviewPosition(v);
-                          setState(() => _wrongPos = v);
-                          _snack('已切换：错题 2~3 题后随机出现');
-                        }
+                      onChanged: (v) {
+                        if (v == null) return;
+                        setState(() => _wrongPos = v);
+                        SettingsService.setWrongReviewPosition(v);
+                        _snack(v == SettingsService.wrongPosNearby
+                            ? '已切换：错题 2~3 题后随机出现'
+                            : '已切换：错题排到队尾');
                         Navigator.pop(ctx);
                       },
-                    ),
-                    RadioListTile<String>(
-                      title: const Text('队尾'),
-                      subtitle: const Text('等其他题都过一遍后再出现'),
-                      value: SettingsService.wrongPosEnd,
-                      groupValue: _wrongPos,
-                      onChanged: (v) async {
-                        if (v != null) {
-                          await SettingsService.setWrongReviewPosition(v);
-                          setState(() => _wrongPos = v);
-                          _snack('已切换：错题排到队尾');
-                        }
-                        Navigator.pop(ctx);
-                      },
+                      child: const Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          RadioListTile<String>(
+                            value: SettingsService.wrongPosNearby,
+                            title: Text('2~3 题后随机出现'),
+                            subtitle: Text('趁热重练，错题很快再遇到'),
+                          ),
+                          RadioListTile<String>(
+                            value: SettingsService.wrongPosEnd,
+                            title: Text('队尾'),
+                            subtitle: Text('等其他题都过一遍后再出现'),
+                          ),
+                        ],
+                      ),
                     ),
                     const SizedBox(height: 8),
                   ],
