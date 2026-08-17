@@ -1,11 +1,25 @@
 import 'package:flutter/material.dart';
 
 import 'data/database.dart';
+import 'data/log_service.dart';
 import 'screens/home_screen.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  await LogService.instance.init();
+
+  // 全局错误兜底：崩了也能留日志
+  FlutterError.onError = (details) {
+    LogService.instance
+        .log('error', 'flutter: ${details.exception}\n${details.stack}');
+  };
+  WidgetsBinding.instance.platformDispatcher.onError = (error, stack) {
+    LogService.instance.log('error', 'uncaught: $error\n$stack');
+    return true;
+  };
+
   await DatabaseHelper.instance.seedIfEmpty();
+  LogService.instance.log('info', 'app started');
   runApp(const RemeApp());
 }
 

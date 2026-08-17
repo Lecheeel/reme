@@ -1,12 +1,13 @@
 import 'package:flutter/material.dart';
 
 import '../data/database.dart';
+import '../data/log_service.dart';
 import '../models/card.dart';
 import '../models/question.dart';
 import '../models/rating.dart';
 import '../scheduler/fsrs.dart';
 
-/// 刷题闭环：读题 → 作答 → 判分 → 解析 → FSRS 评分 → 下一题。
+/// 刷题闭环：读题 → 作答（单选点击即判）→ 判分 → 解析 → FSRS 评分 → 下一题。
 class ReviewScreen extends StatefulWidget {
   final String? chapter; // null = 全部科目/章节
 
@@ -43,6 +44,8 @@ class _ReviewScreenState extends State<ReviewScreen> {
       _index = 0;
       _reset();
     });
+    LogService.instance.log(
+        'info', 'review start chapter=${widget.chapter ?? "all"} count=${qs.length}');
   }
 
   void _reset() {
@@ -51,18 +54,38 @@ class _ReviewScreenState extends State<ReviewScreen> {
     _outcomes = null;
   }
 
+  /// 点击选项：单选立即判分（自动提交），多选则切换选中状态。
+  void _onOptionTap(String label) {
+    if (_submitted) return;
+    final q = _questions[_index];
+    if (q.type == QuestionType.single) {
+      setState(() => _selected = {label});
+      _submit();
+    } else {
+      setState(() {
+        if (_selected.contains(label)) {
+          _selected.remove(label);
+        } else {
+          _selected.add(label);
+        }
+      });
+    }
+  }
+
   Future<void> _submit() async {
     final q = _questions[_index];
     final correct = q.checkAnswer(_selected.toList());
+    setState(() {
+      _submitted = true;
+      if (correct) _correct++;
+    });
     final card = await DatabaseHelper.instance.getCard(q.id) ??
         CardState(questionId: q.id);
     final outcomes = _fsrs.schedule(card, DateTime.now());
+    LogService.instance.log('info',
+        'submit ${q.id} correct=$correct selected=${_selected.toList()}');
     if (!mounted) return;
-    setState(() {
-      _submitted = true;
-      _outcomes = outcomes;
-      if (correct) _correct++;
-    });
+    setState(() => _outcomes = outcomes);
   }
 
   Future<void> _rate(Rating rating) async {
@@ -82,10 +105,21 @@ class _ReviewScreenState extends State<ReviewScreen> {
       seed: card.seed,
     );
     await DatabaseHelper.instance.upsertCard(updated);
+    LogService.instance.log(
+        'info',
+        'rate ${q.id} ${rating.short} '
+        'd=${outcome.difficulty.toStringAsFixed(2)} '
+        's=${outcome.stability.toStringAsFixed(2)} '
+        'ivl=${outcome.intervalDays}d');
     if (!mounted) return;
     setState(() {
       _index++;
       _reset();
+      if (_index >= _questions.length) {
+        LogService.instance
+            .log('info', 'review done correct=$_correct/${_questions.length}');
+        LogService.instance.upload(); // 自动上传，fire-and-forget
+      }
     });
   }
 
@@ -180,15 +214,15 @@ class _ReviewScreenState extends State<ReviewScreen> {
           const SizedBox(height: 16),
           ...q.options.map((o) => _buildOption(q, o)),
           const SizedBox(height: 24),
-          if (!_submitted)
+          if (!_submitted && q.type == QuestionType.multiple)
             FilledButton(
               onPressed: _selected.isEmpty ? null : _submit,
               child: const Text('提交答案'),
             )
-          else ...[
+          else if (_submitted) ...[
             _buildResult(q),
             const SizedBox(height: 16),
-            _buildRatingButtons(),
+            if (_outcomes != null) _buildRatingButtons(),
           ],
         ],
       ),
@@ -230,24 +264,9 @@ class _ReviewScreenState extends State<ReviewScreen> {
         leading: CircleAvatar(radius: 14, child: Text(o.label)),
         title: Text(o.text),
         trailing: trailing,
-        onTap: _submitted ? null : () => _toggle(o.label),
+        onTap: _submitted ? null : () => _onOptionTap(o.label),
       ),
     );
-  }
-
-  void _toggle(String label) {
-    setState(() {
-      final q = _questions[_index];
-      if (q.type == QuestionType.single) {
-        _selected = {label};
-      } else {
-        if (_selected.contains(label)) {
-          _selected.remove(label);
-        } else {
-          _selected.add(label);
-        }
-      }
-    });
   }
 
   Widget _buildResult(Question q) {
