@@ -12,11 +12,13 @@ import '../scheduler/fsrs.dart';
 /// 单题在当前复习会话中的状态。
 class _SessionItem {
   final Question question;
-  int streak = 0; // 连续答对（且评「记得/简单」）次数
+  int streak = 0; // 连续答对（且评「认识」）次数
+  int attempts = 0; // 本会话内作答次数（用于判断是否初次作答）
   _SessionItem(this.question);
 }
 
 /// 刷题闭环：读题 → 作答（单选点击即判）→ 判分 → 解析 → FSRS 评分。
+/// 初次作答即答对的题直接过关（首次掌握，复习周期 25 天）；
 /// 模糊/不认识的题会在本次会话中反复出现，直到连续 3 次答对才过关。
 class ReviewScreen extends StatefulWidget {
   final String? chapter; // null = 全部科目/章节
@@ -29,6 +31,7 @@ class ReviewScreen extends StatefulWidget {
 
 class _ReviewScreenState extends State<ReviewScreen> {
   static const int _passTarget = 3; // 连续答对次数达到该值才算过关
+  static const double _firstPassStability = 25; // 初次答对直接掌握的稳定度（天）
   final _fsrs = FSRS();
 
   bool _loading = true;
@@ -45,6 +48,7 @@ class _ReviewScreenState extends State<ReviewScreen> {
 
   Set<String> _selected = {};
   bool _submitted = false;
+  bool _firstTry = false; // 当前题是否为初次作答
   List<SchedulingOutcome>? _outcomes;
 
   @override
@@ -86,6 +90,7 @@ class _ReviewScreenState extends State<ReviewScreen> {
   void _resetForCurrent() {
     _selected = {};
     _submitted = false;
+    _firstTry = false;
     _outcomes = null;
     _prepareOptions();
   }
@@ -140,6 +145,8 @@ class _ReviewScreenState extends State<ReviewScreen> {
     final correct = _isCorrect(_selected);
     setState(() {
       _submitted = true;
+      _firstTry = item.attempts == 0; // 本题在本会话内第一次作答
+      item.attempts++;
       _attempts++;
       if (correct) _correctAttempts++;
     });
@@ -160,12 +167,21 @@ class _ReviewScreenState extends State<ReviewScreen> {
         CardState(questionId: q.id);
     final outcome = _outcomes!.firstWhere((o) => o.rating == rating);
     final now = DateTime.now();
+    // 初次作答即答对：认识 = 直接掌握（首轮 25 天）；模糊 = 有点印象（对半约 13 天）；
+    // 忘记 = 蒙的，按标准忘记处理（排队重练）。非初次走标准 FSRS 调度。
+    final isFirstPass = _firstTry &&
+        correct &&
+        (rating == Rating.good || rating == Rating.hard);
+    final firstPassDays = rating == Rating.good
+        ? _firstPassStability.round()
+        : (_firstPassStability / 2).round();
+    final days = isFirstPass ? firstPassDays : outcome.intervalDays;
     final updated = CardState(
       questionId: q.id,
       difficulty: outcome.difficulty,
-      stability: outcome.stability,
+      stability: isFirstPass ? days.toDouble() : outcome.stability,
       lastReview: now,
-      due: now.add(Duration(days: outcome.intervalDays)),
+      due: now.add(Duration(days: days)),
       reps: card.reps + 1,
       lapses: card.lapses + (rating == Rating.again ? 1 : 0),
       seed: card.seed,
@@ -174,18 +190,21 @@ class _ReviewScreenState extends State<ReviewScreen> {
     LogService.instance.log('info',
         'rate ${q.id} ${rating.short} '
         'd=${outcome.difficulty.toStringAsFixed(2)} '
-        's=${outcome.stability.toStringAsFixed(2)} '
-        'ivl=${outcome.intervalDays}d');
+        's=${updated.stability.toStringAsFixed(2)} '
+        'ivl=${days}d${isFirstPass ? ' first-pass' : ''}');
 
-    // 过关判定：答对 + 评「认识」记一次过关；模糊/忘记/答错清零重来
+    // 过关判定：初次答对（认识/模糊）直接过关；
+    // 其余情况连续答对 + 评「认识」累计，达到 3 次过关；模糊/忘记/答错清零重来
     final pass = correct && rating == Rating.good;
     if (!mounted) return;
     setState(() {
       item.streak = pass ? item.streak + 1 : 0;
-      if (item.streak >= _passTarget) {
+      final graduated = isFirstPass || item.streak >= _passTarget;
+      if (graduated) {
         _queue.removeAt(0); // 过关，移出队列
         _graduated++;
-        LogService.instance.log('info', 'graduate ${q.id}');
+        LogService.instance.log('info',
+            'graduate ${q.id}${isFirstPass ? ' first-pass' : ''}');
       } else {
         _queue.add(_queue.removeAt(0)); // 没过关，排到队尾再次出现
       }
@@ -422,6 +441,16 @@ class _ReviewScreenState extends State<ReviewScreen> {
   Widget _ratingButton(Rating rating, String label, Color color) {
     final outcome = _outcomes!.firstWhere((o) => o.rating == rating);
     final dark = color.computeLuminance() > 0.5;
+    // 初次作答即答对：认识/模糊按钮提示首轮长周期（25/13 天），忘记按标准显示
+    int? overrideDays;
+    if (_firstTry &&
+        _isCorrect(_selected) &&
+        (rating == Rating.good || rating == Rating.hard)) {
+      overrideDays = rating == Rating.good
+          ? _firstPassStability.round()
+          : (_firstPassStability / 2).round();
+    }
+    final days = overrideDays ?? outcome.intervalDays;
     return Expanded(
       child: Padding(
         padding: const EdgeInsets.symmetric(horizontal: 4),
@@ -437,7 +466,7 @@ class _ReviewScreenState extends State<ReviewScreen> {
             children: [
               Text(label, style: const TextStyle(fontWeight: FontWeight.bold)),
               const SizedBox(height: 2),
-              Text(_intervalText(outcome.intervalDays),
+              Text(_intervalText(days),
                   style: const TextStyle(fontSize: 12)),
             ],
           ),
