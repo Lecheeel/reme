@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 """Reme 题库补充脚本：把新题插入对应章节文件并 version+1。"""
-import json, collections, os
+import json, collections, os, re
 
 BASE = r'C:/Users/User/Desktop/prj/reme/assets/data/politics'
 FILES = ['01_mkszy.json', '02_mzt.json', '03_xi.json', '04_sg.json', '05_sx.json']
@@ -184,13 +184,28 @@ NEW_QUESTIONS = [
      ['A', 'B', 'C'], '社会公德主要内容：文明礼貌、助人为乐、爱护公物、保护环境、遵纪守法。秉公执法属于职业道德范畴。'),
 ]
 
+def _next_id():
+    """扫描现有题库的最大题目 id，返回下一个可用 id（避免重跑撞 id）。"""
+    max_n = 0
+    for fname in FILES:
+        path = os.path.join(BASE, fname)
+        with open(path, encoding='utf-8') as f:
+            doc = json.load(f)
+        for kp in doc['chapter']['knowledge_points']:
+            for q in kp.get('questions', []):
+                m = re.match(r'zz_(\d+)', q.get('id', ''))
+                if m:
+                    max_n = max(max_n, int(m.group(1)))
+    return max_n + 1
+
+
 def main():
     by_file = collections.defaultdict(list)
     for q in NEW_QUESTIONS:
         by_file[q[0]].append(q)
 
     all_ids = []
-    next_id = 13
+    next_id = _next_id()
     for fname in FILES:
         path = os.path.join(BASE, fname)
         with open(path, encoding='utf-8') as f:
