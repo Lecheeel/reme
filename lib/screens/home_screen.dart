@@ -162,7 +162,7 @@ class _HomeScreenState extends State<HomeScreen> {
     await DatabaseHelper.instance.checkIn(DatabaseHelper.dateStr(DateTime.now()));
     LogService.instance.log('info', 'check-in done');
     await _refresh();
-    _snack('🎉 今日打卡成功！连续打卡 ${_streak + 1} 天');
+    _snack('🎉 今日打卡成功！连续打卡 $_streak 天');
   }
 
   void _snack(String msg) {

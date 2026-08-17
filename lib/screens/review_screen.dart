@@ -30,6 +30,14 @@ class _UndoRecord {
   final int newFirstTriesBefore;
   final _SessionItem item;
   final int insertAt; // item 在队列中的位置（_rate 时恒为队首 0）
+  // 评分前的会话内状态快照（撤销时完整恢复，避免 streak/作答状态残留）
+  final int streakBefore;
+  final int wrongCountBefore;
+  final Set<String> selectedBefore;
+  final bool firstTryBefore;
+  final List<SchedulingOutcome>? outcomesBefore;
+  final List<QuestionOption> displayOptionsBefore;
+  final List<String> displayAnswerBefore;
 
   _UndoRecord({
     required this.questionId,
@@ -40,6 +48,13 @@ class _UndoRecord {
     required this.newFirstTriesBefore,
     required this.item,
     required this.insertAt,
+    required this.streakBefore,
+    required this.wrongCountBefore,
+    required this.selectedBefore,
+    required this.firstTryBefore,
+    required this.outcomesBefore,
+    required this.displayOptionsBefore,
+    required this.displayAnswerBefore,
   });
 }
 
@@ -230,6 +245,13 @@ class _ReviewScreenState extends State<ReviewScreen> {
       newFirstTriesBefore: _newFirstTries,
       item: item,
       insertAt: 0,
+      streakBefore: item.streak,
+      wrongCountBefore: item.wrongCount,
+      selectedBefore: Set.of(_selected),
+      firstTryBefore: _firstTry,
+      outcomesBefore: _outcomes,
+      displayOptionsBefore: List.of(_displayOptions),
+      displayAnswerBefore: List.of(_displayAnswer),
     );
     final updated = CardState(
       questionId: q.id,
@@ -325,12 +347,20 @@ class _ReviewScreenState extends State<ReviewScreen> {
     setState(() {
       _queue.removeWhere((e) => identical(e, u.item));
       _queue.insert(min(u.insertAt, _queue.length), u.item);
+      u.item.streak = u.streakBefore;
+      u.item.wrongCount = u.wrongCountBefore;
       _graduated = u.graduatedBefore;
       _attempts = u.attemptsBefore;
       _correctAttempts = u.correctBefore;
       _newFirstTries = u.newFirstTriesBefore;
+      // 恢复到「已作答、待重新评分」状态，选项顺序也保持原样
+      _selected = u.selectedBefore;
+      _firstTry = u.firstTryBefore;
+      _outcomes = u.outcomesBefore;
+      _displayOptions = u.displayOptionsBefore;
+      _displayAnswer = u.displayAnswerBefore;
+      _submitted = true;
       _undo = null;
-      _resetForCurrent();
     });
     LogService.instance.log('info', 'undo ${u.questionId}');
   }

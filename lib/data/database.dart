@@ -547,13 +547,13 @@ class DatabaseHelper {
     };
     var streak = 0;
     var d = DateTime.now();
-    while (true) {
-      if (checked.contains(dateStr(d))) {
-        streak++;
-        d = d.subtract(const Duration(days: 1));
-      } else {
-        break;
-      }
+    // 今天还没打卡时，从昨天开始数（连续未断，避免显示成 0）
+    if (!checked.contains(dateStr(d))) {
+      d = d.subtract(const Duration(days: 1));
+    }
+    while (checked.contains(dateStr(d))) {
+      streak++;
+      d = d.subtract(const Duration(days: 1));
     }
     return streak;
   }
