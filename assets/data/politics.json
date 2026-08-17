@@ -1,5 +1,5 @@
 {
-  "version": 2,
+  "version": 3,
   "subject": "考研政治",
   "chapters": [
     {
@@ -102,6 +102,11 @@
       "name": "毛泽东思想和中国特色社会主义理论体系概论",
       "knowledge_points": [
         {
+          "id": "sinicization",
+          "name": "马克思主义中国化时代化的历史进程与理论成果",
+          "questions": []
+        },
+        {
           "id": "mao_place",
           "name": "毛泽东思想及其历史地位",
           "questions": []
@@ -119,6 +124,11 @@
         {
           "id": "early",
           "name": "社会主义建设道路初步探索的理论成果",
+          "questions": []
+        },
+        {
+          "id": "theory_system",
+          "name": "中国特色社会主义理论体系的形成发展",
           "questions": []
         },
         {
@@ -236,7 +246,7 @@
         },
         {
           "id": "livelihood",
-          "name": "加强以民生为重点的社会建设",
+          "name": "以保障和改善民生为重点，加强社会建设",
           "questions": []
         },
         {
@@ -261,7 +271,7 @@
         },
         {
           "id": "diplomacy",
-          "name": "中国特色大国外交",
+          "name": "中国特色大国外交和推动构建人类命运共同体",
           "questions": []
         },
         {
