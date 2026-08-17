@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../data/log_service.dart';
+import '../data/settings_service.dart';
 
 class SettingsScreen extends StatefulWidget {
   const SettingsScreen({super.key});
@@ -12,19 +13,35 @@ class SettingsScreen extends StatefulWidget {
 class _SettingsScreenState extends State<SettingsScreen> {
   bool _enabled = false;
   String _url = LogService.defaultUrl;
+  bool _shuffle = false;
   bool _uploading = false;
 
   @override
   void initState() {
     super.initState();
-    _enabled = LogService.instance.enabled;
-    _url = LogService.instance.url;
+    _load();
   }
 
-  Future<void> _toggle(bool value) async {
+  Future<void> _load() async {
+    final shuffle = await SettingsService.getShuffleOptions();
+    if (!mounted) return;
+    setState(() {
+      _enabled = LogService.instance.enabled;
+      _url = LogService.instance.url;
+      _shuffle = shuffle;
+    });
+  }
+
+  Future<void> _toggleLog(bool value) async {
     await LogService.instance.setEnabled(value);
     setState(() => _enabled = value);
     _snack(value ? '调试日志已开启，日志将自动上传' : '调试日志已关闭');
+  }
+
+  Future<void> _toggleShuffle(bool value) async {
+    await SettingsService.setShuffleOptions(value);
+    setState(() => _shuffle = value);
+    _snack(value ? '已开启选项打乱' : '已关闭选项打乱');
   }
 
   Future<void> _editUrl() async {
@@ -80,11 +97,20 @@ class _SettingsScreenState extends State<SettingsScreen> {
       appBar: AppBar(title: const Text('设置')),
       body: ListView(
         children: [
+          const _SectionHeader('复习'),
+          SwitchListTile(
+            title: const Text('打乱选项'),
+            subtitle: const Text('每次出现时选项顺序随机，避免记住位置'),
+            value: _shuffle,
+            onChanged: _toggleShuffle,
+          ),
+          const Divider(),
+          const _SectionHeader('调试日志'),
           SwitchListTile(
             title: const Text('调试日志'),
             subtitle: const Text('开启后记录运行日志，自动上传到电脑供分析'),
             value: _enabled,
-            onChanged: _toggle,
+            onChanged: _toggleLog,
           ),
           ListTile(
             title: const Text('上传地址'),
@@ -115,6 +141,26 @@ class _SettingsScreenState extends State<SettingsScreen> {
             ),
           ),
         ],
+      ),
+    );
+  }
+}
+
+class _SectionHeader extends StatelessWidget {
+  final String text;
+  const _SectionHeader(this.text);
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(16, 16, 16, 4),
+      child: Text(
+        text,
+        style: TextStyle(
+          fontSize: 13,
+          fontWeight: FontWeight.bold,
+          color: Theme.of(context).colorScheme.primary,
+        ),
       ),
     );
   }

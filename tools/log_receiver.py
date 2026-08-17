@@ -25,7 +25,7 @@ class Handler(BaseHTTPRequestHandler):
             return
         try:
             length = int(self.headers.get("Content-Length", 0) or 0)
-            raw = self.rfile.read(length).decode("utf-8", "replace")
+            raw = (self.rfile.read(length) if length > 0 else self.rfile.read()).decode("utf-8", "replace")
             data = json.loads(raw) if raw else {}
             device = (data.get("device") or "unknown").replace("/", "_")
             logs = data.get("logs") or ""

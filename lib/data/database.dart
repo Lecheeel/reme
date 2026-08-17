@@ -4,6 +4,7 @@ import 'package:path/path.dart' as p;
 import 'package:sqflite/sqflite.dart';
 
 import '../models/card.dart';
+import '../models/mastery.dart';
 import '../models/question.dart';
 import 'question_bank_loader.dart';
 
@@ -14,6 +15,29 @@ class ChapterStat {
   final int due;
 
   ChapterStat(this.name, this.total, this.due);
+}
+
+/// 单题进度：记忆状态 + 掌握程度。
+class QuestionProgress {
+  final String id;
+  final String chapter;
+  final String knowledgePoint;
+  final String stem;
+  final int reps;
+  final int lapses;
+  final double stability;
+
+  QuestionProgress({
+    required this.id,
+    required this.chapter,
+    required this.knowledgePoint,
+    required this.stem,
+    required this.reps,
+    required this.lapses,
+    required this.stability,
+  });
+
+  Mastery get mastery => masteryOf(reps: reps, stability: stability);
 }
 
 /// SQLite 访问层（单例）。两张表：
@@ -151,6 +175,30 @@ class DatabaseHelper {
               r['chapter'] as String,
               (r['total'] as num?)?.toInt() ?? 0,
               (r['due'] as num?)?.toInt() ?? 0,
+            ))
+        .toList();
+  }
+
+  /// 全量题目进度（含未学），按章节→知识点排序。
+  Future<List<QuestionProgress>> getProgress() async {
+    final db = await database;
+    final rows = await db.rawQuery('''
+      SELECT q.id, q.chapter, q.knowledge_point, q.stem,
+             COALESCE(c.reps, 0) AS reps,
+             COALESCE(c.lapses, 0) AS lapses,
+             COALESCE(c.stability, 0.0) AS stability
+      FROM questions q LEFT JOIN cards c ON q.id = c.question_id
+      ORDER BY q.chapter, q.knowledge_point, q.id
+    ''');
+    return rows
+        .map((r) => QuestionProgress(
+              id: r['id'] as String,
+              chapter: r['chapter'] as String,
+              knowledgePoint: r['knowledge_point'] as String,
+              stem: r['stem'] as String,
+              reps: (r['reps'] as num).toInt(),
+              lapses: (r['lapses'] as num).toInt(),
+              stability: (r['stability'] as num).toDouble(),
             ))
         .toList();
   }

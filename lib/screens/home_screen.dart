@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../data/database.dart';
 import 'chapter_screen.dart';
+import 'progress_screen.dart';
 import 'review_screen.dart';
 import 'settings_screen.dart';
 
@@ -57,6 +58,8 @@ class _HomeScreenState extends State<HomeScreen> {
             _buildHeader(),
             const SizedBox(height: 16),
             _buildSubjectCard(),
+            const SizedBox(height: 12),
+            _buildProgressCard(),
           ],
         ),
       ),
@@ -115,6 +118,24 @@ class _HomeScreenState extends State<HomeScreen> {
         onTap: () {
           Navigator.of(context).push(
             MaterialPageRoute(builder: (_) => const ChapterScreen()),
+          );
+        },
+      ),
+    );
+  }
+
+  Widget _buildProgressCard() {
+    return Card(
+      child: ListTile(
+        contentPadding: const EdgeInsets.all(16),
+        leading: const Icon(Icons.insights, color: Colors.teal),
+        title: const Text('学习进度',
+            style: TextStyle(fontWeight: FontWeight.bold)),
+        subtitle: const Text('掌握 / 模糊 / 未学'),
+        trailing: const Icon(Icons.chevron_right),
+        onTap: () {
+          Navigator.of(context).push(
+            MaterialPageRoute(builder: (_) => const ProgressScreen()),
           );
         },
       ),

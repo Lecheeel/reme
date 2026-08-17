@@ -74,9 +74,12 @@ class LogService {
 
       final client = HttpClient()
         ..connectionTimeout = const Duration(seconds: 5);
+      final payload = jsonEncode({'device': 'reme-android', 'logs': content});
+      final bytes = utf8.encode(payload);
       final req = await client.postUrl(Uri.parse('$_url/upload'));
       req.headers.contentType = ContentType.json;
-      req.write(jsonEncode({'device': 'reme-android', 'logs': content}));
+      req.contentLength = bytes.length; // 显式设 Content-Length，避免分块编码导致接收端读到空 body
+      req.add(bytes);
       final resp = await req.close();
       final ok = resp.statusCode == 200;
       if (ok) {
