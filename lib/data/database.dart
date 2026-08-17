@@ -198,20 +198,35 @@ class DatabaseHelper {
     }, conflictAlgorithm: ConflictAlgorithm.replace);
   }
 
-  /// 全库统计：(总数, 待复习数, 已掌握数)。
-  Future<(int, int, int)> getSubjectStats() async {
+  /// 全库统计：(总数, 待复习数, 已掌握数, 今日到期复习数)。
+  /// dueReview = 有卡片且到期的题（复习负载，估算预计天数时占产能）。
+  Future<(int, int, int, int)> getSubjectStats() async {
     final db = await database;
     final now = DateTime.now().millisecondsSinceEpoch;
     final row = (await db.rawQuery('''
       SELECT COUNT(*) AS total,
              SUM(CASE WHEN c.question_id IS NULL OR c.due <= ? THEN 1 ELSE 0 END) AS due,
-             SUM(CASE WHEN c.reps > 0 AND c.stability >= ? THEN 1 ELSE 0 END) AS mastered
+             SUM(CASE WHEN c.reps > 0 AND c.stability >= ? THEN 1 ELSE 0 END) AS mastered,
+             SUM(CASE WHEN c.question_id IS NOT NULL AND c.due <= ? THEN 1 ELSE 0 END) AS due_review
       FROM questions q LEFT JOIN cards c ON q.id = c.question_id
-    ''', [now, masteredStabilityThreshold])).first;
+    ''', [now, masteredStabilityThreshold, now])).first;
     final total = (row['total'] as num?)?.toInt() ?? 0;
     final due = (row['due'] as num?)?.toInt() ?? 0;
     final mastered = (row['mastered'] as num?)?.toInt() ?? 0;
-    return (total, due, mastered);
+    final dueReview = (row['due_review'] as num?)?.toInt() ?? 0;
+    return (total, due, mastered, dueReview);
+  }
+
+  /// 已掌握题的平均作答次数（估算「每掌握一题平均消耗多少次作答」），
+  /// 无已掌握数据时返回 null（调用方用兜底值）。
+  Future<double?> getAvgRepsForMastered() async {
+    final db = await database;
+    final row = (await db.rawQuery('''
+      SELECT AVG(c.reps) AS avg_reps FROM cards c
+      WHERE c.reps > 0 AND c.stability >= ?
+    ''', [masteredStabilityThreshold])).first;
+    final v = row['avg_reps'];
+    return v == null ? null : (v as num).toDouble();
   }
 
   /// 按章节分组统计。

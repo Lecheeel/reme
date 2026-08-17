@@ -22,6 +22,8 @@ class _HomeScreenState extends State<HomeScreen> {
   int _mastered = 0;
   int _dailyTarget = SettingsService.defaultDailyTarget;
   int _estimateDays = 0;
+  double _k = 1.5; // 每掌握一题平均作答次数（估算用，真实数据兜底）
+  int _effectiveDaily = 0; // 每天用于推进掌握的净产能（扣除到期复习）
 
   @override
   void initState() {
@@ -30,17 +32,25 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   Future<void> _refresh() async {
-    final (total, due, mastered) =
+    final (total, due, mastered, dueReview) =
         await DatabaseHelper.instance.getSubjectStats();
     final target = await SettingsService.getDailyTarget();
+    final avgReps = await DatabaseHelper.instance.getAvgRepsForMastered();
     if (!mounted) return;
     setState(() {
       _total = total;
       _due = due;
       _mastered = mastered;
       _dailyTarget = target;
+      // 每掌握一题平均消耗的作答次数：真实统计（clamp 1~4），无数据兜底 1.5
+      final k = ((avgReps ?? 1.5).clamp(1.0, 4.0)).toDouble();
+      _k = k;
+      // 每天到期复习占用产能（上限 60%，防止复习爆炸时算出 0 天）
+      final reviewLoad = (dueReview).clamp(0, (target * 0.6).round()).toInt();
+      _effectiveDaily = max(target - reviewLoad, 1);
       final remaining = max(total - mastered, 0);
-      _estimateDays = remaining == 0 ? 0 : (remaining / target).ceil();
+      _estimateDays =
+          remaining == 0 ? 0 : (remaining * k / _effectiveDaily).ceil();
     });
   }
 
@@ -198,7 +208,7 @@ class _HomeScreenState extends State<HomeScreen> {
             title: const Text('预计学习天数'),
             subtitle: Text(_estimateDays == 0
                 ? '全部掌握，无待学'
-                : '剩余 ${_total - _mastered} 题 ÷ 每天 $_dailyTarget 题'),
+                : '剩余 ${_total - _mastered} 题 · 每掌握一题约 ${_k.toStringAsFixed(1)} 次作答 · 每天净学 $_effectiveDaily 题（已扣到期复习）'),
             trailing: Text(
               _estimateDays == 0 ? '—' : '$_estimateDays 天',
               style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
