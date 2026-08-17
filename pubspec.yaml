@@ -2,7 +2,7 @@ name: reme
 description: "Reme — 考研刷题 App，基于 FSRS 间隔重复调度。"
 publish_to: 'none'
 
-version: 2.1.1+6
+version: 2.1.2+7
 
 environment:
   sdk: ^3.13.0
