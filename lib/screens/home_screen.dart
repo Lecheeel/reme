@@ -28,6 +28,7 @@ class _HomeScreenState extends State<HomeScreen> {
   int _effectiveDaily = 0; // 每天用于推进掌握的净产能（扣除到期复习）
   DailyStat? _today; // 今日学习统计（打卡用）
   int _streak = 0; // 连续打卡天数
+  bool _showHomeOverride = false; // 打卡后点「加强巩固」临时回到主页（下次进 App 仍默认小结页）
 
   @override
   void initState() {
@@ -125,10 +126,11 @@ class _HomeScreenState extends State<HomeScreen> {
   @override
   Widget build(BuildContext context) {
     final checkedInToday = _today?.checkedIn ?? false;
+    final showSummary = checkedInToday && !_showHomeOverride;
     final today = min(_due, _dailyTarget);
     return Scaffold(
       appBar: AppBar(
-        title: Text(checkedInToday ? '今日小结' : 'Reme'),
+        title: Text(showSummary ? '今日小结' : 'Reme'),
         centerTitle: false,
         actions: [
           IconButton(
@@ -153,11 +155,9 @@ class _HomeScreenState extends State<HomeScreen> {
       ),
       body: RefreshIndicator(
         onRefresh: _refresh,
-        child: checkedInToday
-            ? _buildTodaySummary()
-            : _buildHomeBody(),
+        child: showSummary ? _buildTodaySummary() : _buildHomeBody(),
       ),
-      floatingActionButton: (!checkedInToday && _due > 0)
+      floatingActionButton: (!showSummary && _due > 0)
           ? FloatingActionButton.extended(
               onPressed: () => _startReview(null),
               icon: const Icon(Icons.play_arrow),
@@ -247,9 +247,9 @@ class _HomeScreenState extends State<HomeScreen> {
             const SizedBox(width: 12),
             Expanded(
               child: FilledButton.icon(
-                onPressed: () => setState(() {}),
-                icon: const Icon(Icons.home),
-                label: const Text('回到主页'),
+                onPressed: () => setState(() => _showHomeOverride = true),
+                icon: const Icon(Icons.bolt),
+                label: const Text('加强巩固'),
               ),
             ),
           ],
@@ -346,6 +346,7 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   Widget _buildCheckInCard(int todayDone, double progress, bool canCheckIn) {
+    final alreadyChecked = _today?.checkedIn ?? false;
     return Card(
       child: Padding(
         padding: const EdgeInsets.all(16),
@@ -354,7 +355,8 @@ class _HomeScreenState extends State<HomeScreen> {
           children: [
             Row(
               children: [
-                const Icon(Icons.flag, color: Colors.deepOrange),
+                Icon(Icons.flag,
+                    color: alreadyChecked ? Colors.green : Colors.deepOrange),
                 const SizedBox(width: 6),
                 Text('今日打卡',
                     style: const TextStyle(
@@ -366,7 +368,9 @@ class _HomeScreenState extends State<HomeScreen> {
               ],
             ),
             const SizedBox(height: 10),
-            Text('今天已刷 $todayDone / $_dailyTarget 题'),
+            Text(alreadyChecked
+                ? '今天已打卡，可继续加强巩固'
+                : '今天已刷 $todayDone / $_dailyTarget 题'),
             const SizedBox(height: 6),
             ClipRRect(
               borderRadius: BorderRadius.circular(4),
@@ -379,11 +383,17 @@ class _HomeScreenState extends State<HomeScreen> {
             const SizedBox(height: 12),
             SizedBox(
               width: double.infinity,
-              child: FilledButton.icon(
-                onPressed: canCheckIn ? _doCheckIn : null,
-                icon: const Icon(Icons.verified),
-                label: Text(canCheckIn ? '打卡' : '还差 ${_dailyTarget - todayDone} 题'),
-              ),
+              child: alreadyChecked
+                  ? FilledButton.icon(
+                      onPressed: null,
+                      icon: const Icon(Icons.verified),
+                      label: const Text('今日已打卡 ✓'),
+                    )
+                  : FilledButton.icon(
+                      onPressed: canCheckIn ? _doCheckIn : null,
+                      icon: const Icon(Icons.verified),
+                      label: Text(canCheckIn ? '打卡' : '还差 ${_dailyTarget - todayDone} 题'),
+                    ),
             ),
           ],
         ),
