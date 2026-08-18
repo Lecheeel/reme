@@ -95,6 +95,8 @@ class _ReviewScreenState extends State<ReviewScreen> {
   Set<String> _selected = {};
   bool _submitted = false;
   bool _firstTry = false; // 当前题是否为初次作答
+  bool _fromUndo = false; // 撤销返回答错题，允许修改答案
+  Set<String> _lastSelected = {}; // 撤销前选择的选项（用于「上次选择」标注）
   List<SchedulingOutcome>? _outcomes;
 
   @override
@@ -149,6 +151,8 @@ class _ReviewScreenState extends State<ReviewScreen> {
     _selected = {};
     _submitted = false;
     _firstTry = false;
+    _fromUndo = false;
+    _lastSelected = {};
     _outcomes = null;
     _prepareOptions();
   }
@@ -216,6 +220,8 @@ class _ReviewScreenState extends State<ReviewScreen> {
     setState(() {
       _submitted = true;
       _firstTry = item.attempts == 0; // 本题在本会话内第一次作答
+      _fromUndo = false; // 重新提交后清除「修改答案」机会与「上次选择」标注
+      _lastSelected = {};
       item.attempts++;
       _attempts++;
       if (correct) _correctAttempts++;
@@ -371,6 +377,9 @@ class _ReviewScreenState extends State<ReviewScreen> {
       _displayOptions = u.displayOptionsBefore;
       _displayAnswer = u.displayAnswerBefore;
       _submitted = true;
+      // 撤销返回答错题时，允许修改答案并标注上次选择
+      _fromUndo = !_isCorrect(_selected);
+      _lastSelected = Set.of(_selected);
       _undo = null;
     });
     LogService.instance.log('info', 'undo ${u.questionId}');
@@ -495,7 +504,8 @@ class _ReviewScreenState extends State<ReviewScreen> {
             if (_isCorrect(_selected)) ...[
               // 答对才弹记忆度选项
               if (_outcomes != null) _buildRatingButtons(),
-            ] else ...[
+            ] else if (_fromUndo) ...[
+              // 撤销返回：给一次修改答案的机会
               Row(
                 children: [
                   Expanded(
@@ -508,10 +518,16 @@ class _ReviewScreenState extends State<ReviewScreen> {
                   Expanded(
                     child: FilledButton(
                       onPressed: () => _rate(Rating.again),
-                      child: const Text('仍然不会，下一题'),
+                      child: const Text('下一题'),
                     ),
                   ),
                 ],
+              ),
+            ] else ...[
+              // 正常答错：直接归忘记，只给下一题
+              FilledButton(
+                onPressed: () => _rate(Rating.again),
+                child: const Text('下一题'),
               ),
             ],
           ],
@@ -523,6 +539,7 @@ class _ReviewScreenState extends State<ReviewScreen> {
   Widget _buildOption(QuestionOption o) {
     final isCorrect = _displayAnswer.contains(o.label);
     final isSelected = _selected.contains(o.label);
+    final showLastSelected = _fromUndo && _lastSelected.contains(o.label);
     Color? bg;
     Color border = Colors.grey.shade300;
     Widget? trailing;
@@ -553,11 +570,28 @@ class _ReviewScreenState extends State<ReviewScreen> {
       ),
       child: ListTile(
         leading: CircleAvatar(radius: 14, child: Text(o.label)),
-        title: Text(o.text),
+        title: Row(
+          children: [
+            Expanded(child: Text(o.text)),
+            if (showLastSelected)
+              Container(
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                decoration: BoxDecoration(
+                  color: Colors.orange.shade100,
+                  borderRadius: BorderRadius.circular(4),
+                ),
+                child: Text(
+                  '上次选择',
+                  style: TextStyle(fontSize: 10, color: Colors.orange.shade800),
+                ),
+              ),
+          ],
+        ),
         trailing: trailing,
-         onTap: (_submitted && _isCorrect(_selected))
-             ? null
-             : () => _onOptionTap(o.label),
+        onTap: (_submitted && (_isCorrect(_selected) || !_fromUndo))
+            ? null
+            : () => _onOptionTap(o.label),
       ),
     );
   }
