@@ -1,10 +1,7 @@
 import 'dart:convert';
-import 'dart:io';
 
 import 'package:drift/drift.dart';
 import 'package:drift_flutter/drift_flutter.dart';
-import 'package:path/path.dart' as p;
-import 'package:path_provider/path_provider.dart';
 
 import '../models/card.dart';
 import '../models/mastery.dart';
@@ -189,86 +186,19 @@ class DatabaseHelper extends _$DatabaseHelper {
 
   static final DatabaseHelper instance = DatabaseHelper._();
 
+  /// 全新 Drift 数据库。当前尚无生产用户，不再保留旧目录或旧 schema 的迁移分支。
   static DatabaseConnection _openConnection() => driftDatabase(
         name: 'reme',
-        native: DriftNativeOptions(
-          shareAcrossIsolates: true,
-          databasePath: _databasePath,
-        ),
+        native: const DriftNativeOptions(shareAcrossIsolates: true),
       );
 
-  /// 兼容旧版 Android 的数据库目录；新安装则使用 Drift 的文档目录。
-  /// 下一次成功打开后仍由 Drift 直接管理同一个文件。
-  static Future<String> _databasePath() async {
-    final documents = await getApplicationDocumentsDirectory();
-    final legacy = File(p.join(documents.parent.path, 'databases', 'reme.db'));
-    if (await legacy.exists()) return legacy.path;
-    return p.join(documents.path, 'reme.sqlite');
-  }
-
   @override
-  int get schemaVersion => 7;
+  int get schemaVersion => 1;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
         onCreate: (m) async {
           await m.createAll();
-          await _createIndexes();
-        },
-        onUpgrade: (m, from, to) async {
-          // 兼容历史 schema（v1-v6）；v7 开始由 Drift 管理。
-          if (from < 2) {
-            await customStatement('CREATE TABLE IF NOT EXISTS meta (key TEXT PRIMARY KEY, value TEXT)');
-            await customStatement('DELETE FROM questions');
-          }
-          if (from < 3) {
-            await customStatement('ALTER TABLE questions ADD COLUMN knowledge_point_id TEXT');
-          }
-          if (from < 4) {
-            await customStatement('''
-              CREATE TABLE IF NOT EXISTS daily_stats (
-                date TEXT PRIMARY KEY,
-                new_count INTEGER NOT NULL DEFAULT 0,
-                review_count INTEGER NOT NULL DEFAULT 0,
-                correct_count INTEGER NOT NULL DEFAULT 0,
-                graduated_count INTEGER NOT NULL DEFAULT 0
-              )
-            ''');
-          }
-          if (from < 5) {
-            await customStatement('ALTER TABLE daily_stats ADD COLUMN checked_in INTEGER NOT NULL DEFAULT 0');
-            await customStatement('ALTER TABLE daily_stats ADD COLUMN check_in_time INTEGER');
-          }
-          if (from < 6) {
-            await customStatement('ALTER TABLE cards ADD COLUMN suspended INTEGER NOT NULL DEFAULT 0');
-          }
-          if (from < 7) {
-            await customStatement('''
-              CREATE TABLE IF NOT EXISTS review_events (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                card_id TEXT NOT NULL,
-                reviewed_at INTEGER NOT NULL,
-                rating INTEGER NOT NULL,
-                correct INTEGER NOT NULL,
-                is_new INTEGER NOT NULL,
-                graduated INTEGER NOT NULL,
-                event_kind TEXT NOT NULL DEFAULT 'rating',
-                elapsed_days REAL NOT NULL,
-                previous_difficulty REAL NOT NULL,
-                previous_stability REAL NOT NULL,
-                previous_due INTEGER,
-                previous_reps INTEGER NOT NULL,
-                previous_lapses INTEGER NOT NULL,
-                next_difficulty REAL NOT NULL,
-                next_stability REAL NOT NULL,
-                next_due INTEGER,
-                next_reps INTEGER NOT NULL,
-                next_lapses INTEGER NOT NULL,
-                voided INTEGER NOT NULL DEFAULT 0,
-                created_at INTEGER NOT NULL
-              )
-            ''');
-          }
           await _createIndexes();
         },
         beforeOpen: (details) async {
