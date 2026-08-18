@@ -311,10 +311,10 @@ class _HomeScreenState extends State<HomeScreen> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text('把该刷的题刷够', style: Theme.of(context).textTheme.titleMedium),
+        Text('FSRS 间隔重复', style: Theme.of(context).textTheme.titleMedium),
         const SizedBox(height: 4),
         Text(
-          'FSRS 间隔重复 · 在遗忘前重现',
+          '该复习的，已经帮你挑好了',
           style: Theme.of(context)
               .textTheme
               .bodySmall
