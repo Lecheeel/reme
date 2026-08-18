@@ -23,7 +23,7 @@ The scheduling design is grounded in the spaced-repetition / memory-algorithm re
 ## Tech
 
 - Flutter 3.47 / Dart 3.13
-- `sqflite` (SQLite), `shared_preferences`, `fl_chart`
+- `drift` (SQLite), `shared_preferences`, `fl_chart`
 - FSRS ported to Dart in `lib/scheduler/fsrs.dart` (with unit tests)
 
 ## Build

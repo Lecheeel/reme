@@ -1,8 +1,8 @@
 import 'dart:convert';
 import 'dart:io';
 
+import 'package:path_provider/path_provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'package:sqflite/sqflite.dart';
 
 /// 调试日志服务：启用后把日志追加写入本地文件，并支持 POST 上传到电脑端接收服务。
 ///
@@ -30,8 +30,8 @@ class LogService {
     final prefs = await SharedPreferences.getInstance();
     _enabled = prefs.getBool(_kEnabled) ?? false;
     _url = prefs.getString(_kUrl) ?? defaultUrl;
-    final dir = await getDatabasesPath();
-    _file = File('$dir/reme_debug.log');
+    final dir = await getApplicationSupportDirectory();
+    _file = File('${dir.path}/reme_debug.log');
   }
 
   Future<void> setEnabled(bool value) async {

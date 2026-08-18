@@ -27,7 +27,8 @@ class _UndoRecord {
   final int graduatedBefore;
   final int attemptsBefore;
   final int correctBefore;
-  final int newFirstTriesBefore;
+  final int eventId;
+  final DailyStat dailyDelta;
   final _SessionItem item;
   final int insertAt; // item 在队列中的位置（_rate 时恒为队首 0）
   // 评分前的会话内状态快照（撤销时完整恢复，避免 streak/作答状态残留）
@@ -45,7 +46,8 @@ class _UndoRecord {
     required this.graduatedBefore,
     required this.attemptsBefore,
     required this.correctBefore,
-    required this.newFirstTriesBefore,
+    required this.eventId,
+    required this.dailyDelta,
     required this.item,
     required this.insertAt,
     required this.streakBefore,
@@ -93,7 +95,6 @@ class _ReviewScreenState extends State<ReviewScreen> {
   Set<String> _selected = {};
   bool _submitted = false;
   bool _firstTry = false; // 当前题是否为初次作答
-  int _newFirstTries = 0; // 本会话首次作答的题数（埋点用）
   List<SchedulingOutcome>? _outcomes;
 
   @override
@@ -136,7 +137,6 @@ class _ReviewScreenState extends State<ReviewScreen> {
       _graduated = 0;
       _attempts = 0;
       _correctAttempts = 0;
-      _newFirstTries = 0;
       _undo = null;
       _loading = false;
       _resetForCurrent();
@@ -204,7 +204,6 @@ class _ReviewScreenState extends State<ReviewScreen> {
     setState(() {
       _submitted = true;
       _firstTry = item.attempts == 0; // 本题在本会话内第一次作答
-      if (_firstTry) _newFirstTries++;
       item.attempts++;
       _attempts++;
       if (correct) _correctAttempts++;
@@ -235,24 +234,6 @@ class _ReviewScreenState extends State<ReviewScreen> {
         ? _firstPassStability.round()
         : (_firstPassStability / 2).round();
     final days = isFirstPass ? firstPassDays : outcome.intervalDays;
-    // 记录撤销点（评分前的卡片状态与各项计数）
-    _undo = _UndoRecord(
-      questionId: q.id,
-      cardBefore: existing,
-      graduatedBefore: _graduated,
-      attemptsBefore: _attempts,
-      correctBefore: _correctAttempts,
-      newFirstTriesBefore: _newFirstTries,
-      item: item,
-      insertAt: 0,
-      streakBefore: item.streak,
-      wrongCountBefore: item.wrongCount,
-      selectedBefore: Set.of(_selected),
-      firstTryBefore: _firstTry,
-      outcomesBefore: _outcomes,
-      displayOptionsBefore: List.of(_displayOptions),
-      displayAnswerBefore: List.of(_displayAnswer),
-    );
     final updated = CardState(
       questionId: q.id,
       difficulty: outcome.difficulty,
@@ -263,20 +244,48 @@ class _ReviewScreenState extends State<ReviewScreen> {
       lapses: card.lapses + (rating == Rating.again ? 1 : 0),
       seed: card.seed,
     );
-    await DatabaseHelper.instance.upsertCard(updated);
+    // 过关判定先算出，再与卡片状态、复习事件、日统计一并原子提交。
+    final pass = correct && rating == Rating.good;
+    final nextStreak = pass ? item.streak + 1 : 0;
+    final graduated = isFirstPass || nextStreak >= _passTarget;
+    final write = await DatabaseHelper.instance.recordReview(
+      before: card,
+      after: updated,
+      rating: rating,
+      correct: correct,
+      isNew: existing == null,
+      graduated: graduated,
+      reviewedAt: now,
+      eventKind: _firstTry ? 'scheduled_review' : 'session_practice',
+    );
+    // 记录撤销点：撤销同样通过事务回滚卡片和统计，并保留被作废的事件审计。
+    _undo = _UndoRecord(
+      questionId: q.id,
+      cardBefore: existing,
+      graduatedBefore: _graduated,
+      attemptsBefore: _attempts,
+      correctBefore: _correctAttempts,
+      eventId: write.eventId,
+      dailyDelta: write.delta,
+      item: item,
+      insertAt: 0,
+      streakBefore: item.streak,
+      wrongCountBefore: item.wrongCount,
+      selectedBefore: Set.of(_selected),
+      firstTryBefore: _firstTry,
+      outcomesBefore: _outcomes,
+      displayOptionsBefore: List.of(_displayOptions),
+      displayAnswerBefore: List.of(_displayAnswer),
+    );
     LogService.instance.log('info',
         'rate ${q.id} ${rating.short} '
         'd=${outcome.difficulty.toStringAsFixed(2)} '
         's=${updated.stability.toStringAsFixed(2)} '
         'ivl=${days}d${isFirstPass ? ' first-pass' : ''}');
 
-    // 过关判定：初次答对（认识/模糊）直接过关；
-    // 其余情况连续答对 + 评「认识」累计，达到 3 次过关；模糊/忘记/答错清零重来
-    final pass = correct && rating == Rating.good;
     if (!mounted) return;
     setState(() {
-      item.streak = pass ? item.streak + 1 : 0;
-      final graduated = isFirstPass || item.streak >= _passTarget;
+      item.streak = nextStreak;
       if (graduated) {
         _queue.removeAt(0); // 过关，移出队列
         _graduated++;
@@ -289,14 +298,6 @@ class _ReviewScreenState extends State<ReviewScreen> {
         LogService.instance.log('info',
             'review done graduated=$_graduated/$_total attempts=$_attempts correct=$_correctAttempts');
         LogService.instance.upload(); // 自动上传日志
-        // 写入今日学习统计（趋势图数据源）
-        DatabaseHelper.instance.upsertDailyStat(DailyStat(
-          date: DatabaseHelper.dateStr(DateTime.now()),
-          newCount: _newFirstTries,
-          reviewCount: _attempts,
-          correctCount: _correctAttempts,
-          graduatedCount: _graduated,
-        ));
       }
       _resetForCurrent();
     });
@@ -337,12 +338,11 @@ class _ReviewScreenState extends State<ReviewScreen> {
   Future<void> _undoLast() async {
     final u = _undo;
     if (u == null) return;
-    final db = DatabaseHelper.instance;
-    if (u.cardBefore == null) {
-      await db.deleteCard(u.questionId);
-    } else {
-      await db.upsertCard(u.cardBefore!);
-    }
+    await DatabaseHelper.instance.undoReview(
+      eventId: u.eventId,
+      cardBefore: u.cardBefore,
+      delta: u.dailyDelta,
+    );
     if (!mounted) return;
     setState(() {
       _queue.removeWhere((e) => identical(e, u.item));
@@ -352,7 +352,6 @@ class _ReviewScreenState extends State<ReviewScreen> {
       _graduated = u.graduatedBefore;
       _attempts = u.attemptsBefore;
       _correctAttempts = u.correctBefore;
-      _newFirstTries = u.newFirstTriesBefore;
       // 恢复到「已作答、待重新评分」状态，选项顺序也保持原样
       _selected = u.selectedBefore;
       _firstTry = u.firstTryBefore;
