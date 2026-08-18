@@ -9,8 +9,9 @@ import '../data/log_service.dart';
 import '../data/settings_service.dart';
 import '../data/update_checker.dart';
 import 'calendar_screen.dart';
-import 'chapter_screen.dart';
+
 import 'progress_screen.dart';
+import 'question_banks_screen.dart';
 import 'review_screen.dart';
 import 'settings_screen.dart';
 
@@ -22,6 +23,7 @@ class HomeScreen extends StatefulWidget {
 }
 
 class _HomeScreenState extends State<HomeScreen> {
+  String _bankName = '考研政治基础题库';
   int _total = 0;
   int _due = 0;
   int _mastered = 0;
@@ -83,6 +85,8 @@ class _HomeScreenState extends State<HomeScreen> {
 
   Future<void> _refresh() async {
     final db = DatabaseHelper.instance;
+    final banks = await db.getQuestionBanks();
+    final activeBankId = await db.getActiveBankId();
     final (total, due, mastered, dueReview) = await db.getSubjectStats();
     final target = await SettingsService.getDailyTarget();
     final avgReps = await db.getAvgRepsForMastered();
@@ -92,6 +96,19 @@ class _HomeScreenState extends State<HomeScreen> {
     if (!mounted) return;
     setState(() {
       _total = total;
+      _bankName = banks
+          .firstWhere(
+            (bank) => bank.id == activeBankId,
+            orElse: () => const QuestionBankInfo(
+              id: '',
+              name: '题库',
+              source: '',
+              subject: '',
+              builtIn: false,
+              questionCount: 0,
+            ),
+          )
+          .name;
       _due = due;
       _mastered = mastered;
       _dailyTarget = target;
@@ -105,8 +122,9 @@ class _HomeScreenState extends State<HomeScreen> {
       final reviewLoad = (dueReview).clamp(0, (target * 0.6).round()).toInt();
       _effectiveDaily = max(target - reviewLoad, 1);
       final remaining = max(total - mastered, 0);
-      _estimateDays =
-          remaining == 0 ? 0 : (remaining * k / _effectiveDaily).ceil();
+      _estimateDays = remaining == 0
+          ? 0
+          : (remaining * k / _effectiveDaily).ceil();
       _today = today;
       _streak = streak;
     });
@@ -122,9 +140,7 @@ class _HomeScreenState extends State<HomeScreen> {
           controller: controller,
           keyboardType: TextInputType.number,
           autofocus: true,
-          decoration: const InputDecoration(
-            helperText: '打卡基准：当天刷题次数达到该值即可打卡',
-          ),
+          decoration: const InputDecoration(helperText: '打卡基准：当天刷题次数达到该值即可打卡'),
         ),
         actions: [
           TextButton(
@@ -159,7 +175,9 @@ class _HomeScreenState extends State<HomeScreen> {
       _snack('还差 ${_dailyTarget - todayDone} 题才能打卡，加油！');
       return;
     }
-    await DatabaseHelper.instance.checkIn(DatabaseHelper.dateStr(DateTime.now()));
+    await DatabaseHelper.instance.checkIn(
+      DatabaseHelper.dateStr(DateTime.now()),
+    );
     LogService.instance.log('info', 'check-in done');
     await _refresh();
     _snack('🎉 今日打卡成功！连续打卡 $_streak 天');
@@ -186,18 +204,18 @@ class _HomeScreenState extends State<HomeScreen> {
             icon: const Icon(Icons.calendar_month),
             tooltip: '打卡日历',
             onPressed: () {
-              Navigator.of(context).push(
-                MaterialPageRoute(builder: (_) => const CalendarScreen()),
-              );
+              Navigator.of(
+                context,
+              ).push(MaterialPageRoute(builder: (_) => const CalendarScreen()));
             },
           ),
           IconButton(
             icon: const Icon(Icons.settings),
             tooltip: '设置',
             onPressed: () {
-              Navigator.of(context).push(
-                MaterialPageRoute(builder: (_) => const SettingsScreen()),
-              );
+              Navigator.of(
+                context,
+              ).push(MaterialPageRoute(builder: (_) => const SettingsScreen()));
             },
           ),
         ],
@@ -218,7 +236,9 @@ class _HomeScreenState extends State<HomeScreen> {
 
   Widget _buildHomeBody() {
     final todayDone = _today?.reviewCount ?? 0;
-    final progress = _dailyTarget == 0 ? 0.0 : (todayDone / _dailyTarget).clamp(0.0, 1.0);
+    final progress = _dailyTarget == 0
+        ? 0.0
+        : (todayDone / _dailyTarget).clamp(0.0, 1.0);
     final canCheckIn = todayDone >= _dailyTarget;
 
     return ListView(
@@ -249,13 +269,17 @@ class _HomeScreenState extends State<HomeScreen> {
         const Icon(Icons.check_circle, size: 64, color: Colors.green),
         const SizedBox(height: 8),
         const Center(
-          child: Text('今日已打卡',
-              style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
+          child: Text(
+            '今日已打卡',
+            style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+          ),
         ),
         const SizedBox(height: 4),
         Center(
-          child: Text('连续打卡 $_streak 天',
-              style: TextStyle(color: Colors.deepOrange.shade400)),
+          child: Text(
+            '连续打卡 $_streak 天',
+            style: TextStyle(color: Colors.deepOrange.shade400),
+          ),
         ),
         const SizedBox(height: 16),
         Card(
@@ -265,9 +289,14 @@ class _HomeScreenState extends State<HomeScreen> {
               children: [
                 _SummaryRow(label: '今日刷题', value: '$done 次'),
                 _SummaryRow(label: '新学题目', value: '${t?.newCount ?? 0} 道'),
-                _SummaryRow(label: '过关题目', value: '${t?.graduatedCount ?? 0} 道'),
                 _SummaryRow(
-                    label: '正确率', value: '${(acc * 100).toStringAsFixed(0)}%'),
+                  label: '过关题目',
+                  value: '${t?.graduatedCount ?? 0} 道',
+                ),
+                _SummaryRow(
+                  label: '正确率',
+                  value: '${(acc * 100).toStringAsFixed(0)}%',
+                ),
                 if (t?.checkInTime != null)
                   _SummaryRow(
                     label: '打卡时间',
@@ -315,9 +344,7 @@ class _HomeScreenState extends State<HomeScreen> {
         const SizedBox(height: 4),
         Text(
           '该复习的，已经帮你挑好了',
-          style: Theme.of(context)
-              .textTheme
-              .bodySmall
+          style: Theme.of(context).textTheme.bodySmall
               ?.copyWith(color: Colors.grey),
         ),
       ],
@@ -328,14 +355,18 @@ class _HomeScreenState extends State<HomeScreen> {
     return Card(
       child: ListTile(
         contentPadding: const EdgeInsets.all(16),
-        title: const Text('考研政治',
-            style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18)),
+        title: Text(
+          _bankName,
+          style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 18),
+        ),
         subtitle: Padding(
           padding: const EdgeInsets.only(top: 8),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text('新题 $_newCount · 学习中 $_learningCount · 复习 $_reviewCount · 已掌握 $_mastered'),
+              Text(
+                '新题 $_newCount · 学习中 $_learningCount · 复习 $_reviewCount · 已掌握 $_mastered',
+              ),
               const SizedBox(height: 12),
               ClipRRect(
                 borderRadius: BorderRadius.circular(4),
@@ -349,9 +380,11 @@ class _HomeScreenState extends State<HomeScreen> {
         ),
         trailing: const Icon(Icons.chevron_right),
         onTap: () {
-          Navigator.of(context).push(
-            MaterialPageRoute(builder: (_) => const ChapterScreen()),
-          );
+          Navigator.of(context)
+              .push(
+                MaterialPageRoute(builder: (_) => const QuestionBanksScreen()),
+              )
+              .then((_) => _refresh());
         },
       ),
     );
@@ -368,9 +401,13 @@ class _HomeScreenState extends State<HomeScreen> {
             trailing: Row(
               mainAxisSize: MainAxisSize.min,
               children: [
-                Text('$_dailyTarget 题',
-                    style: const TextStyle(
-                        fontWeight: FontWeight.bold, fontSize: 16)),
+                Text(
+                  '$_dailyTarget 题',
+                  style: const TextStyle(
+                    fontWeight: FontWeight.bold,
+                    fontSize: 16,
+                  ),
+                ),
                 const SizedBox(width: 4),
                 const Icon(Icons.edit, size: 16, color: Colors.grey),
               ],
@@ -380,9 +417,11 @@ class _HomeScreenState extends State<HomeScreen> {
           ListTile(
             leading: const Icon(Icons.event_available, color: Colors.teal),
             title: const Text('预计学习天数'),
-            subtitle: Text(_estimateDays == 0
-                ? '全部掌握，无待学'
-                : '剩余 ${_total - _mastered} 题 · 每掌握一题约 ${_k.toStringAsFixed(1)} 次作答 · 每天净学 $_effectiveDaily 题（已扣到期复习）'),
+            subtitle: Text(
+              _estimateDays == 0
+                  ? '全部掌握，无待学'
+                  : '剩余 ${_total - _mastered} 题 · 每掌握一题约 ${_k.toStringAsFixed(1)} 次作答 · 每天净学 $_effectiveDaily 题（已扣到期复习）',
+            ),
             trailing: Text(
               _estimateDays == 0 ? '—' : '$_estimateDays 天',
               style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
@@ -403,22 +442,34 @@ class _HomeScreenState extends State<HomeScreen> {
           children: [
             Row(
               children: [
-                Icon(Icons.flag,
-                    color: alreadyChecked ? Colors.green : Colors.deepOrange),
+                Icon(
+                  Icons.flag,
+                  color: alreadyChecked ? Colors.green : Colors.deepOrange,
+                ),
                 const SizedBox(width: 6),
-                Text('今日打卡',
-                    style: const TextStyle(
-                        fontWeight: FontWeight.bold, fontSize: 15)),
+                Text(
+                  '今日打卡',
+                  style: const TextStyle(
+                    fontWeight: FontWeight.bold,
+                    fontSize: 15,
+                  ),
+                ),
                 const Spacer(),
-                Text('连续 $_streak 天',
-                    style: TextStyle(
-                        fontSize: 12, color: Colors.deepOrange.shade400)),
+                Text(
+                  '连续 $_streak 天',
+                  style: TextStyle(
+                    fontSize: 12,
+                    color: Colors.deepOrange.shade400,
+                  ),
+                ),
               ],
             ),
             const SizedBox(height: 10),
-            Text(alreadyChecked
-                ? '今天已打卡，可继续加强巩固'
-                : '今天已刷 $todayDone / $_dailyTarget 题'),
+            Text(
+              alreadyChecked
+                  ? '今天已打卡，可继续加强巩固'
+                  : '今天已刷 $todayDone / $_dailyTarget 题',
+            ),
             const SizedBox(height: 6),
             ClipRRect(
               borderRadius: BorderRadius.circular(4),
@@ -440,7 +491,9 @@ class _HomeScreenState extends State<HomeScreen> {
                   : FilledButton.icon(
                       onPressed: canCheckIn ? _doCheckIn : null,
                       icon: const Icon(Icons.verified),
-                      label: Text(canCheckIn ? '打卡' : '还差 ${_dailyTarget - todayDone} 题'),
+                      label: Text(
+                        canCheckIn ? '打卡' : '还差 ${_dailyTarget - todayDone} 题',
+                      ),
                     ),
             ),
           ],
@@ -454,23 +507,24 @@ class _HomeScreenState extends State<HomeScreen> {
       child: ListTile(
         contentPadding: const EdgeInsets.all(16),
         leading: const Icon(Icons.insights, color: Colors.teal),
-        title: const Text('学习进度',
-            style: TextStyle(fontWeight: FontWeight.bold)),
+        title: const Text(
+          '学习进度',
+          style: TextStyle(fontWeight: FontWeight.bold),
+        ),
         subtitle: const Text('图表可视化：掌握分布 / 到期规划 / 记忆成熟度'),
         trailing: const Icon(Icons.chevron_right),
         onTap: () {
-          Navigator.of(context).push(
-            MaterialPageRoute(builder: (_) => const ProgressScreen()),
-          );
+          Navigator.of(context)
+              .push(MaterialPageRoute(builder: (_) => const ProgressScreen()));
         },
       ),
     );
   }
 
   void _startReview(String? chapter) async {
-    await Navigator.of(context).push(
-      MaterialPageRoute(builder: (_) => ReviewScreen(chapter: chapter)),
-    );
+    await Navigator.of(
+      context,
+    ).push(MaterialPageRoute(builder: (_) => ReviewScreen(chapter: chapter)));
     if (mounted) _refresh(); // 复习完回来刷新今日进度/打卡状态
   }
 }
@@ -489,9 +543,10 @@ class _SummaryRow extends StatelessWidget {
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
           Text(label, style: const TextStyle(fontSize: 15)),
-          Text(value,
-              style: const TextStyle(
-                  fontSize: 15, fontWeight: FontWeight.bold)),
+          Text(
+            value,
+            style: const TextStyle(fontSize: 15, fontWeight: FontWeight.bold),
+          ),
         ],
       ),
     );

@@ -18,6 +18,16 @@ class $QuestionsTable extends Questions
     type: DriftSqlType.string,
     requiredDuringInsert: true,
   );
+  static const VerificationMeta _bankIdMeta = const VerificationMeta('bankId');
+  @override
+  late final GeneratedColumn<String> bankId = GeneratedColumn<String>(
+    'bank_id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+    defaultValue: const Constant('builtin_politics'),
+  );
   static const VerificationMeta _subjectMeta = const VerificationMeta(
     'subject',
   );
@@ -114,6 +124,7 @@ class $QuestionsTable extends Questions
   @override
   List<GeneratedColumn> get $columns => [
     id,
+    bankId,
     subject,
     chapter,
     knowledgePoint,
@@ -140,6 +151,12 @@ class $QuestionsTable extends Questions
       context.handle(_idMeta, id.isAcceptableOrUnknown(data['id']!, _idMeta));
     } else if (isInserting) {
       context.missing(_idMeta);
+    }
+    if (data.containsKey('bank_id')) {
+      context.handle(
+        _bankIdMeta,
+        bankId.isAcceptableOrUnknown(data['bank_id']!, _bankIdMeta),
+      );
     }
     if (data.containsKey('subject')) {
       context.handle(
@@ -233,6 +250,10 @@ class $QuestionsTable extends Questions
         DriftSqlType.string,
         data['${effectivePrefix}id'],
       )!,
+      bankId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}bank_id'],
+      )!,
       subject: attachedDatabase.typeMapping.read(
         DriftSqlType.string,
         data['${effectivePrefix}subject'],
@@ -280,6 +301,7 @@ class $QuestionsTable extends Questions
 
 class QuestionRow extends DataClass implements Insertable<QuestionRow> {
   final String id;
+  final String bankId;
   final String subject;
   final String chapter;
   final String knowledgePoint;
@@ -291,6 +313,7 @@ class QuestionRow extends DataClass implements Insertable<QuestionRow> {
   final String explanation;
   const QuestionRow({
     required this.id,
+    required this.bankId,
     required this.subject,
     required this.chapter,
     required this.knowledgePoint,
@@ -305,6 +328,7 @@ class QuestionRow extends DataClass implements Insertable<QuestionRow> {
   Map<String, Expression> toColumns(bool nullToAbsent) {
     final map = <String, Expression>{};
     map['id'] = Variable<String>(id);
+    map['bank_id'] = Variable<String>(bankId);
     map['subject'] = Variable<String>(subject);
     map['chapter'] = Variable<String>(chapter);
     map['knowledge_point'] = Variable<String>(knowledgePoint);
@@ -322,6 +346,7 @@ class QuestionRow extends DataClass implements Insertable<QuestionRow> {
   QuestionsCompanion toCompanion(bool nullToAbsent) {
     return QuestionsCompanion(
       id: Value(id),
+      bankId: Value(bankId),
       subject: Value(subject),
       chapter: Value(chapter),
       knowledgePoint: Value(knowledgePoint),
@@ -343,6 +368,7 @@ class QuestionRow extends DataClass implements Insertable<QuestionRow> {
     serializer ??= driftRuntimeOptions.defaultSerializer;
     return QuestionRow(
       id: serializer.fromJson<String>(json['id']),
+      bankId: serializer.fromJson<String>(json['bankId']),
       subject: serializer.fromJson<String>(json['subject']),
       chapter: serializer.fromJson<String>(json['chapter']),
       knowledgePoint: serializer.fromJson<String>(json['knowledgePoint']),
@@ -359,6 +385,7 @@ class QuestionRow extends DataClass implements Insertable<QuestionRow> {
     serializer ??= driftRuntimeOptions.defaultSerializer;
     return <String, dynamic>{
       'id': serializer.toJson<String>(id),
+      'bankId': serializer.toJson<String>(bankId),
       'subject': serializer.toJson<String>(subject),
       'chapter': serializer.toJson<String>(chapter),
       'knowledgePoint': serializer.toJson<String>(knowledgePoint),
@@ -373,6 +400,7 @@ class QuestionRow extends DataClass implements Insertable<QuestionRow> {
 
   QuestionRow copyWith({
     String? id,
+    String? bankId,
     String? subject,
     String? chapter,
     String? knowledgePoint,
@@ -384,6 +412,7 @@ class QuestionRow extends DataClass implements Insertable<QuestionRow> {
     String? explanation,
   }) => QuestionRow(
     id: id ?? this.id,
+    bankId: bankId ?? this.bankId,
     subject: subject ?? this.subject,
     chapter: chapter ?? this.chapter,
     knowledgePoint: knowledgePoint ?? this.knowledgePoint,
@@ -399,6 +428,7 @@ class QuestionRow extends DataClass implements Insertable<QuestionRow> {
   QuestionRow copyWithCompanion(QuestionsCompanion data) {
     return QuestionRow(
       id: data.id.present ? data.id.value : this.id,
+      bankId: data.bankId.present ? data.bankId.value : this.bankId,
       subject: data.subject.present ? data.subject.value : this.subject,
       chapter: data.chapter.present ? data.chapter.value : this.chapter,
       knowledgePoint: data.knowledgePoint.present
@@ -421,6 +451,7 @@ class QuestionRow extends DataClass implements Insertable<QuestionRow> {
   String toString() {
     return (StringBuffer('QuestionRow(')
           ..write('id: $id, ')
+          ..write('bankId: $bankId, ')
           ..write('subject: $subject, ')
           ..write('chapter: $chapter, ')
           ..write('knowledgePoint: $knowledgePoint, ')
@@ -437,6 +468,7 @@ class QuestionRow extends DataClass implements Insertable<QuestionRow> {
   @override
   int get hashCode => Object.hash(
     id,
+    bankId,
     subject,
     chapter,
     knowledgePoint,
@@ -452,6 +484,7 @@ class QuestionRow extends DataClass implements Insertable<QuestionRow> {
       identical(this, other) ||
       (other is QuestionRow &&
           other.id == this.id &&
+          other.bankId == this.bankId &&
           other.subject == this.subject &&
           other.chapter == this.chapter &&
           other.knowledgePoint == this.knowledgePoint &&
@@ -465,6 +498,7 @@ class QuestionRow extends DataClass implements Insertable<QuestionRow> {
 
 class QuestionsCompanion extends UpdateCompanion<QuestionRow> {
   final Value<String> id;
+  final Value<String> bankId;
   final Value<String> subject;
   final Value<String> chapter;
   final Value<String> knowledgePoint;
@@ -477,6 +511,7 @@ class QuestionsCompanion extends UpdateCompanion<QuestionRow> {
   final Value<int> rowid;
   const QuestionsCompanion({
     this.id = const Value.absent(),
+    this.bankId = const Value.absent(),
     this.subject = const Value.absent(),
     this.chapter = const Value.absent(),
     this.knowledgePoint = const Value.absent(),
@@ -490,6 +525,7 @@ class QuestionsCompanion extends UpdateCompanion<QuestionRow> {
   });
   QuestionsCompanion.insert({
     required String id,
+    this.bankId = const Value.absent(),
     required String subject,
     required String chapter,
     required String knowledgePoint,
@@ -511,6 +547,7 @@ class QuestionsCompanion extends UpdateCompanion<QuestionRow> {
        explanation = Value(explanation);
   static Insertable<QuestionRow> custom({
     Expression<String>? id,
+    Expression<String>? bankId,
     Expression<String>? subject,
     Expression<String>? chapter,
     Expression<String>? knowledgePoint,
@@ -524,6 +561,7 @@ class QuestionsCompanion extends UpdateCompanion<QuestionRow> {
   }) {
     return RawValuesInsertable({
       if (id != null) 'id': id,
+      if (bankId != null) 'bank_id': bankId,
       if (subject != null) 'subject': subject,
       if (chapter != null) 'chapter': chapter,
       if (knowledgePoint != null) 'knowledge_point': knowledgePoint,
@@ -539,6 +577,7 @@ class QuestionsCompanion extends UpdateCompanion<QuestionRow> {
 
   QuestionsCompanion copyWith({
     Value<String>? id,
+    Value<String>? bankId,
     Value<String>? subject,
     Value<String>? chapter,
     Value<String>? knowledgePoint,
@@ -552,6 +591,7 @@ class QuestionsCompanion extends UpdateCompanion<QuestionRow> {
   }) {
     return QuestionsCompanion(
       id: id ?? this.id,
+      bankId: bankId ?? this.bankId,
       subject: subject ?? this.subject,
       chapter: chapter ?? this.chapter,
       knowledgePoint: knowledgePoint ?? this.knowledgePoint,
@@ -570,6 +610,9 @@ class QuestionsCompanion extends UpdateCompanion<QuestionRow> {
     final map = <String, Expression>{};
     if (id.present) {
       map['id'] = Variable<String>(id.value);
+    }
+    if (bankId.present) {
+      map['bank_id'] = Variable<String>(bankId.value);
     }
     if (subject.present) {
       map['subject'] = Variable<String>(subject.value);
@@ -608,6 +651,7 @@ class QuestionsCompanion extends UpdateCompanion<QuestionRow> {
   String toString() {
     return (StringBuffer('QuestionsCompanion(')
           ..write('id: $id, ')
+          ..write('bankId: $bankId, ')
           ..write('subject: $subject, ')
           ..write('chapter: $chapter, ')
           ..write('knowledgePoint: $knowledgePoint, ')
@@ -617,6 +661,411 @@ class QuestionsCompanion extends UpdateCompanion<QuestionRow> {
           ..write('options: $options, ')
           ..write('answer: $answer, ')
           ..write('explanation: $explanation, ')
+          ..write('rowid: $rowid')
+          ..write(')'))
+        .toString();
+  }
+}
+
+class $QuestionBanksTable extends QuestionBanks
+    with TableInfo<$QuestionBanksTable, QuestionBank> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $QuestionBanksTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _idMeta = const VerificationMeta('id');
+  @override
+  late final GeneratedColumn<String> id = GeneratedColumn<String>(
+    'id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _nameMeta = const VerificationMeta('name');
+  @override
+  late final GeneratedColumn<String> name = GeneratedColumn<String>(
+    'name',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _sourceMeta = const VerificationMeta('source');
+  @override
+  late final GeneratedColumn<String> source = GeneratedColumn<String>(
+    'source',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _subjectMeta = const VerificationMeta(
+    'subject',
+  );
+  @override
+  late final GeneratedColumn<String> subject = GeneratedColumn<String>(
+    'subject',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+    defaultValue: const Constant(''),
+  );
+  static const VerificationMeta _builtInMeta = const VerificationMeta(
+    'builtIn',
+  );
+  @override
+  late final GeneratedColumn<int> builtIn = GeneratedColumn<int>(
+    'built_in',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+    defaultValue: const Constant(0),
+  );
+  static const VerificationMeta _importedAtMeta = const VerificationMeta(
+    'importedAt',
+  );
+  @override
+  late final GeneratedColumn<int> importedAt = GeneratedColumn<int>(
+    'imported_at',
+    aliasedName,
+    true,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+  );
+  @override
+  List<GeneratedColumn> get $columns => [
+    id,
+    name,
+    source,
+    subject,
+    builtIn,
+    importedAt,
+  ];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'question_banks';
+  @override
+  VerificationContext validateIntegrity(
+    Insertable<QuestionBank> instance, {
+    bool isInserting = false,
+  }) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('id')) {
+      context.handle(_idMeta, id.isAcceptableOrUnknown(data['id']!, _idMeta));
+    } else if (isInserting) {
+      context.missing(_idMeta);
+    }
+    if (data.containsKey('name')) {
+      context.handle(
+        _nameMeta,
+        name.isAcceptableOrUnknown(data['name']!, _nameMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_nameMeta);
+    }
+    if (data.containsKey('source')) {
+      context.handle(
+        _sourceMeta,
+        source.isAcceptableOrUnknown(data['source']!, _sourceMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_sourceMeta);
+    }
+    if (data.containsKey('subject')) {
+      context.handle(
+        _subjectMeta,
+        subject.isAcceptableOrUnknown(data['subject']!, _subjectMeta),
+      );
+    }
+    if (data.containsKey('built_in')) {
+      context.handle(
+        _builtInMeta,
+        builtIn.isAcceptableOrUnknown(data['built_in']!, _builtInMeta),
+      );
+    }
+    if (data.containsKey('imported_at')) {
+      context.handle(
+        _importedAtMeta,
+        importedAt.isAcceptableOrUnknown(data['imported_at']!, _importedAtMeta),
+      );
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {id};
+  @override
+  QuestionBank map(Map<String, dynamic> data, {String? tablePrefix}) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return QuestionBank(
+      id: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}id'],
+      )!,
+      name: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}name'],
+      )!,
+      source: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}source'],
+      )!,
+      subject: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}subject'],
+      )!,
+      builtIn: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}built_in'],
+      )!,
+      importedAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}imported_at'],
+      ),
+    );
+  }
+
+  @override
+  $QuestionBanksTable createAlias(String alias) {
+    return $QuestionBanksTable(attachedDatabase, alias);
+  }
+}
+
+class QuestionBank extends DataClass implements Insertable<QuestionBank> {
+  final String id;
+  final String name;
+  final String source;
+  final String subject;
+  final int builtIn;
+  final int? importedAt;
+  const QuestionBank({
+    required this.id,
+    required this.name,
+    required this.source,
+    required this.subject,
+    required this.builtIn,
+    this.importedAt,
+  });
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['id'] = Variable<String>(id);
+    map['name'] = Variable<String>(name);
+    map['source'] = Variable<String>(source);
+    map['subject'] = Variable<String>(subject);
+    map['built_in'] = Variable<int>(builtIn);
+    if (!nullToAbsent || importedAt != null) {
+      map['imported_at'] = Variable<int>(importedAt);
+    }
+    return map;
+  }
+
+  QuestionBanksCompanion toCompanion(bool nullToAbsent) {
+    return QuestionBanksCompanion(
+      id: Value(id),
+      name: Value(name),
+      source: Value(source),
+      subject: Value(subject),
+      builtIn: Value(builtIn),
+      importedAt: importedAt == null && nullToAbsent
+          ? const Value.absent()
+          : Value(importedAt),
+    );
+  }
+
+  factory QuestionBank.fromJson(
+    Map<String, dynamic> json, {
+    ValueSerializer? serializer,
+  }) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return QuestionBank(
+      id: serializer.fromJson<String>(json['id']),
+      name: serializer.fromJson<String>(json['name']),
+      source: serializer.fromJson<String>(json['source']),
+      subject: serializer.fromJson<String>(json['subject']),
+      builtIn: serializer.fromJson<int>(json['builtIn']),
+      importedAt: serializer.fromJson<int?>(json['importedAt']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'id': serializer.toJson<String>(id),
+      'name': serializer.toJson<String>(name),
+      'source': serializer.toJson<String>(source),
+      'subject': serializer.toJson<String>(subject),
+      'builtIn': serializer.toJson<int>(builtIn),
+      'importedAt': serializer.toJson<int?>(importedAt),
+    };
+  }
+
+  QuestionBank copyWith({
+    String? id,
+    String? name,
+    String? source,
+    String? subject,
+    int? builtIn,
+    Value<int?> importedAt = const Value.absent(),
+  }) => QuestionBank(
+    id: id ?? this.id,
+    name: name ?? this.name,
+    source: source ?? this.source,
+    subject: subject ?? this.subject,
+    builtIn: builtIn ?? this.builtIn,
+    importedAt: importedAt.present ? importedAt.value : this.importedAt,
+  );
+  QuestionBank copyWithCompanion(QuestionBanksCompanion data) {
+    return QuestionBank(
+      id: data.id.present ? data.id.value : this.id,
+      name: data.name.present ? data.name.value : this.name,
+      source: data.source.present ? data.source.value : this.source,
+      subject: data.subject.present ? data.subject.value : this.subject,
+      builtIn: data.builtIn.present ? data.builtIn.value : this.builtIn,
+      importedAt: data.importedAt.present
+          ? data.importedAt.value
+          : this.importedAt,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('QuestionBank(')
+          ..write('id: $id, ')
+          ..write('name: $name, ')
+          ..write('source: $source, ')
+          ..write('subject: $subject, ')
+          ..write('builtIn: $builtIn, ')
+          ..write('importedAt: $importedAt')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode =>
+      Object.hash(id, name, source, subject, builtIn, importedAt);
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is QuestionBank &&
+          other.id == this.id &&
+          other.name == this.name &&
+          other.source == this.source &&
+          other.subject == this.subject &&
+          other.builtIn == this.builtIn &&
+          other.importedAt == this.importedAt);
+}
+
+class QuestionBanksCompanion extends UpdateCompanion<QuestionBank> {
+  final Value<String> id;
+  final Value<String> name;
+  final Value<String> source;
+  final Value<String> subject;
+  final Value<int> builtIn;
+  final Value<int?> importedAt;
+  final Value<int> rowid;
+  const QuestionBanksCompanion({
+    this.id = const Value.absent(),
+    this.name = const Value.absent(),
+    this.source = const Value.absent(),
+    this.subject = const Value.absent(),
+    this.builtIn = const Value.absent(),
+    this.importedAt = const Value.absent(),
+    this.rowid = const Value.absent(),
+  });
+  QuestionBanksCompanion.insert({
+    required String id,
+    required String name,
+    required String source,
+    this.subject = const Value.absent(),
+    this.builtIn = const Value.absent(),
+    this.importedAt = const Value.absent(),
+    this.rowid = const Value.absent(),
+  }) : id = Value(id),
+       name = Value(name),
+       source = Value(source);
+  static Insertable<QuestionBank> custom({
+    Expression<String>? id,
+    Expression<String>? name,
+    Expression<String>? source,
+    Expression<String>? subject,
+    Expression<int>? builtIn,
+    Expression<int>? importedAt,
+    Expression<int>? rowid,
+  }) {
+    return RawValuesInsertable({
+      if (id != null) 'id': id,
+      if (name != null) 'name': name,
+      if (source != null) 'source': source,
+      if (subject != null) 'subject': subject,
+      if (builtIn != null) 'built_in': builtIn,
+      if (importedAt != null) 'imported_at': importedAt,
+      if (rowid != null) 'rowid': rowid,
+    });
+  }
+
+  QuestionBanksCompanion copyWith({
+    Value<String>? id,
+    Value<String>? name,
+    Value<String>? source,
+    Value<String>? subject,
+    Value<int>? builtIn,
+    Value<int?>? importedAt,
+    Value<int>? rowid,
+  }) {
+    return QuestionBanksCompanion(
+      id: id ?? this.id,
+      name: name ?? this.name,
+      source: source ?? this.source,
+      subject: subject ?? this.subject,
+      builtIn: builtIn ?? this.builtIn,
+      importedAt: importedAt ?? this.importedAt,
+      rowid: rowid ?? this.rowid,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (id.present) {
+      map['id'] = Variable<String>(id.value);
+    }
+    if (name.present) {
+      map['name'] = Variable<String>(name.value);
+    }
+    if (source.present) {
+      map['source'] = Variable<String>(source.value);
+    }
+    if (subject.present) {
+      map['subject'] = Variable<String>(subject.value);
+    }
+    if (builtIn.present) {
+      map['built_in'] = Variable<int>(builtIn.value);
+    }
+    if (importedAt.present) {
+      map['imported_at'] = Variable<int>(importedAt.value);
+    }
+    if (rowid.present) {
+      map['rowid'] = Variable<int>(rowid.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('QuestionBanksCompanion(')
+          ..write('id: $id, ')
+          ..write('name: $name, ')
+          ..write('source: $source, ')
+          ..write('subject: $subject, ')
+          ..write('builtIn: $builtIn, ')
+          ..write('importedAt: $importedAt, ')
           ..write('rowid: $rowid')
           ..write(')'))
         .toString();
@@ -2982,6 +3431,7 @@ abstract class _$DatabaseHelper extends GeneratedDatabase {
   _$DatabaseHelper(QueryExecutor e) : super(e);
   $DatabaseHelperManager get managers => $DatabaseHelperManager(this);
   late final $QuestionsTable questions = $QuestionsTable(this);
+  late final $QuestionBanksTable questionBanks = $QuestionBanksTable(this);
   late final $CardsTable cards = $CardsTable(this);
   late final $MetaEntriesTable metaEntries = $MetaEntriesTable(this);
   late final $DailyStatsTable dailyStats = $DailyStatsTable(this);
@@ -2992,6 +3442,7 @@ abstract class _$DatabaseHelper extends GeneratedDatabase {
   @override
   List<DatabaseSchemaEntity> get allSchemaEntities => [
     questions,
+    questionBanks,
     cards,
     metaEntries,
     dailyStats,
@@ -3001,6 +3452,7 @@ abstract class _$DatabaseHelper extends GeneratedDatabase {
 
 typedef $$QuestionsTableCreateCompanionBuilder = QuestionsCompanion Function({
   required String id,
+  Value<String> bankId,
   required String subject,
   required String chapter,
   required String knowledgePoint,
@@ -3014,6 +3466,7 @@ typedef $$QuestionsTableCreateCompanionBuilder = QuestionsCompanion Function({
 });
 typedef $$QuestionsTableUpdateCompanionBuilder = QuestionsCompanion Function({
   Value<String> id,
+  Value<String> bankId,
   Value<String> subject,
   Value<String> chapter,
   Value<String> knowledgePoint,
@@ -3037,6 +3490,11 @@ class $$QuestionsTableFilterComposer
   });
   ColumnFilters<String> get id => $composableBuilder(
     column: $table.id,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get bankId => $composableBuilder(
+    column: $table.bankId,
     builder: (column) => ColumnFilters(column),
   );
 
@@ -3100,6 +3558,11 @@ class $$QuestionsTableOrderingComposer
     builder: (column) => ColumnOrderings(column),
   );
 
+  ColumnOrderings<String> get bankId => $composableBuilder(
+    column: $table.bankId,
+    builder: (column) => ColumnOrderings(column),
+  );
+
   ColumnOrderings<String> get subject => $composableBuilder(
     column: $table.subject,
     builder: (column) => ColumnOrderings(column),
@@ -3157,6 +3620,9 @@ class $$QuestionsTableAnnotationComposer
   });
   GeneratedColumn<String> get id =>
       $composableBuilder(column: $table.id, builder: (column) => column);
+
+  GeneratedColumn<String> get bankId =>
+      $composableBuilder(column: $table.bankId, builder: (column) => column);
 
   GeneratedColumn<String> get subject =>
       $composableBuilder(column: $table.subject, builder: (column) => column);
@@ -3224,6 +3690,7 @@ class $$QuestionsTableTableManager
           updateCompanionCallback:
               ({
                 Value<String> id = const Value.absent(),
+                Value<String> bankId = const Value.absent(),
                 Value<String> subject = const Value.absent(),
                 Value<String> chapter = const Value.absent(),
                 Value<String> knowledgePoint = const Value.absent(),
@@ -3236,6 +3703,7 @@ class $$QuestionsTableTableManager
                 Value<int> rowid = const Value.absent(),
               }) => QuestionsCompanion(
                 id: id,
+                bankId: bankId,
                 subject: subject,
                 chapter: chapter,
                 knowledgePoint: knowledgePoint,
@@ -3250,6 +3718,7 @@ class $$QuestionsTableTableManager
           createCompanionCallback:
               ({
                 required String id,
+                Value<String> bankId = const Value.absent(),
                 required String subject,
                 required String chapter,
                 required String knowledgePoint,
@@ -3262,6 +3731,7 @@ class $$QuestionsTableTableManager
                 Value<int> rowid = const Value.absent(),
               }) => QuestionsCompanion.insert(
                 id: id,
+                bankId: bankId,
                 subject: subject,
                 chapter: chapter,
                 knowledgePoint: knowledgePoint,
@@ -3296,6 +3766,229 @@ typedef $$QuestionsTableProcessedTableManager =
         BaseReferences<_$DatabaseHelper, $QuestionsTable, QuestionRow>,
       ),
       QuestionRow,
+      PrefetchHooks Function()
+    >;
+typedef $$QuestionBanksTableCreateCompanionBuilder =
+    QuestionBanksCompanion Function({
+      required String id,
+      required String name,
+      required String source,
+      Value<String> subject,
+      Value<int> builtIn,
+      Value<int?> importedAt,
+      Value<int> rowid,
+    });
+typedef $$QuestionBanksTableUpdateCompanionBuilder =
+    QuestionBanksCompanion Function({
+      Value<String> id,
+      Value<String> name,
+      Value<String> source,
+      Value<String> subject,
+      Value<int> builtIn,
+      Value<int?> importedAt,
+      Value<int> rowid,
+    });
+
+class $$QuestionBanksTableFilterComposer
+    extends Composer<_$DatabaseHelper, $QuestionBanksTable> {
+  $$QuestionBanksTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<String> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get name => $composableBuilder(
+    column: $table.name,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get source => $composableBuilder(
+    column: $table.source,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get subject => $composableBuilder(
+    column: $table.subject,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get builtIn => $composableBuilder(
+    column: $table.builtIn,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get importedAt => $composableBuilder(
+    column: $table.importedAt,
+    builder: (column) => ColumnFilters(column),
+  );
+}
+
+class $$QuestionBanksTableOrderingComposer
+    extends Composer<_$DatabaseHelper, $QuestionBanksTable> {
+  $$QuestionBanksTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<String> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get name => $composableBuilder(
+    column: $table.name,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get source => $composableBuilder(
+    column: $table.source,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get subject => $composableBuilder(
+    column: $table.subject,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get builtIn => $composableBuilder(
+    column: $table.builtIn,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get importedAt => $composableBuilder(
+    column: $table.importedAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+}
+
+class $$QuestionBanksTableAnnotationComposer
+    extends Composer<_$DatabaseHelper, $QuestionBanksTable> {
+  $$QuestionBanksTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<String> get id =>
+      $composableBuilder(column: $table.id, builder: (column) => column);
+
+  GeneratedColumn<String> get name =>
+      $composableBuilder(column: $table.name, builder: (column) => column);
+
+  GeneratedColumn<String> get source =>
+      $composableBuilder(column: $table.source, builder: (column) => column);
+
+  GeneratedColumn<String> get subject =>
+      $composableBuilder(column: $table.subject, builder: (column) => column);
+
+  GeneratedColumn<int> get builtIn =>
+      $composableBuilder(column: $table.builtIn, builder: (column) => column);
+
+  GeneratedColumn<int> get importedAt => $composableBuilder(
+    column: $table.importedAt,
+    builder: (column) => column,
+  );
+}
+
+class $$QuestionBanksTableTableManager
+    extends
+        RootTableManager<
+          _$DatabaseHelper,
+          $QuestionBanksTable,
+          QuestionBank,
+          $$QuestionBanksTableFilterComposer,
+          $$QuestionBanksTableOrderingComposer,
+          $$QuestionBanksTableAnnotationComposer,
+          $$QuestionBanksTableCreateCompanionBuilder,
+          $$QuestionBanksTableUpdateCompanionBuilder,
+          (
+            QuestionBank,
+            BaseReferences<_$DatabaseHelper, $QuestionBanksTable, QuestionBank>,
+          ),
+          QuestionBank,
+          PrefetchHooks Function()
+        > {
+  $$QuestionBanksTableTableManager(
+    _$DatabaseHelper db,
+    $QuestionBanksTable table,
+  ) : super(
+        TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer: () =>
+              $$QuestionBanksTableFilterComposer($db: db, $table: table),
+          createOrderingComposer: () =>
+              $$QuestionBanksTableOrderingComposer($db: db, $table: table),
+          createComputedFieldComposer: () =>
+              $$QuestionBanksTableAnnotationComposer($db: db, $table: table),
+          updateCompanionCallback:
+              ({
+                Value<String> id = const Value.absent(),
+                Value<String> name = const Value.absent(),
+                Value<String> source = const Value.absent(),
+                Value<String> subject = const Value.absent(),
+                Value<int> builtIn = const Value.absent(),
+                Value<int?> importedAt = const Value.absent(),
+                Value<int> rowid = const Value.absent(),
+              }) => QuestionBanksCompanion(
+                id: id,
+                name: name,
+                source: source,
+                subject: subject,
+                builtIn: builtIn,
+                importedAt: importedAt,
+                rowid: rowid,
+              ),
+          createCompanionCallback:
+              ({
+                required String id,
+                required String name,
+                required String source,
+                Value<String> subject = const Value.absent(),
+                Value<int> builtIn = const Value.absent(),
+                Value<int?> importedAt = const Value.absent(),
+                Value<int> rowid = const Value.absent(),
+              }) => QuestionBanksCompanion.insert(
+                id: id,
+                name: name,
+                source: source,
+                subject: subject,
+                builtIn: builtIn,
+                importedAt: importedAt,
+                rowid: rowid,
+              ),
+          withReferenceMapper: (p0) => p0
+              .map((e) => (e.readTable(table), BaseReferences(db, table, e)))
+              .toList(),
+          prefetchHooksCallback: null,
+        ),
+      );
+}
+
+typedef $$QuestionBanksTableProcessedTableManager =
+    ProcessedTableManager<
+      _$DatabaseHelper,
+      $QuestionBanksTable,
+      QuestionBank,
+      $$QuestionBanksTableFilterComposer,
+      $$QuestionBanksTableOrderingComposer,
+      $$QuestionBanksTableAnnotationComposer,
+      $$QuestionBanksTableCreateCompanionBuilder,
+      $$QuestionBanksTableUpdateCompanionBuilder,
+      (
+        QuestionBank,
+        BaseReferences<_$DatabaseHelper, $QuestionBanksTable, QuestionBank>,
+      ),
+      QuestionBank,
       PrefetchHooks Function()
     >;
 typedef $$CardsTableCreateCompanionBuilder = CardsCompanion Function({
@@ -4463,6 +5156,8 @@ class $DatabaseHelperManager {
   $DatabaseHelperManager(this._db);
   $$QuestionsTableTableManager get questions =>
       $$QuestionsTableTableManager(_db, _db.questions);
+  $$QuestionBanksTableTableManager get questionBanks =>
+      $$QuestionBanksTableTableManager(_db, _db.questionBanks);
   $$CardsTableTableManager get cards =>
       $$CardsTableTableManager(_db, _db.cards);
   $$MetaEntriesTableTableManager get metaEntries =>

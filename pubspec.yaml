@@ -2,7 +2,7 @@ name: reme
 description: "Reme — 考研刷题 App，基于 FSRS 间隔重复调度。"
 publish_to: 'none'
 
-version: 2.2.1+9
+version: 2.3.0+10
 
 environment:
   sdk: ^3.13.0
@@ -19,6 +19,9 @@ dependencies:
   url_launcher: ^6.3.2
   drift: ^2.34.3
   drift_flutter: ^0.3.1
+  archive: ^4.0.9
+  sqlite3: ^3.5.1
+  file_picker: ^12.0.0
 
 dev_dependencies:
   flutter_test:
