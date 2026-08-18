@@ -182,7 +182,11 @@ class _ReviewScreenState extends State<ReviewScreen> {
   }
 
   void _onOptionTap(String label) {
-    if (_submitted) return;
+    // 答错后允许回到作答状态；保留 _selected，让用户能看到上次的选择。
+    if (_submitted) {
+      if (_isCorrect(_selected)) return;
+      _editAnswer();
+    }
     final q = _queue.first.question;
     if (q.type == QuestionType.single) {
       setState(() => _selected = {label});
@@ -196,6 +200,14 @@ class _ReviewScreenState extends State<ReviewScreen> {
         }
       });
     }
+  }
+
+  void _editAnswer() {
+    if (!_submitted || _isCorrect(_selected)) return;
+    setState(() {
+      _submitted = false;
+      _outcomes = null;
+    });
   }
 
   Future<void> _submit() async {
@@ -484,10 +496,22 @@ class _ReviewScreenState extends State<ReviewScreen> {
               // 答对才弹记忆度选项
               if (_outcomes != null) _buildRatingButtons(),
             ] else ...[
-              // 答错直接归为「忘记」，只给下一题
-              FilledButton(
-                onPressed: () => _rate(Rating.again),
-                child: const Text('下一题'),
+              Row(
+                children: [
+                  Expanded(
+                    child: OutlinedButton(
+                      onPressed: _editAnswer,
+                      child: const Text('修改答案'),
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: FilledButton(
+                      onPressed: () => _rate(Rating.again),
+                      child: const Text('仍然不会，下一题'),
+                    ),
+                  ),
+                ],
               ),
             ],
           ],
@@ -531,7 +555,9 @@ class _ReviewScreenState extends State<ReviewScreen> {
         leading: CircleAvatar(radius: 14, child: Text(o.label)),
         title: Text(o.text),
         trailing: trailing,
-        onTap: _submitted ? null : () => _onOptionTap(o.label),
+         onTap: (_submitted && _isCorrect(_selected))
+             ? null
+             : () => _onOptionTap(o.label),
       ),
     );
   }
