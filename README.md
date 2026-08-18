@@ -2,7 +2,6 @@
 
 A spaced-repetition quiz app built with Flutter and FSRS. It schedules *what* to review and *when*, so each problem resurfaces right before you'd forget it — instead of grinding the same list linearly.
 
-**Reme** = "re-member".
 
 ## Features
 
@@ -30,7 +29,7 @@ The scheduling design is grounded in the spaced-repetition / memory-algorithm re
 ## Build
 
 ```bash
-./build.sh   # pub get + release APK (arm64-v8a, signed) → ~/Desktop/Reme-release.apk
+./build.sh   # pub get + release APK (arm64-v8a, signed) 
 ```
 
 or:
@@ -39,7 +38,6 @@ or:
 flutter build apk --release
 ```
 
-The release APK is arm64-v8a only and signed with the `memento` keystore (not committed; see `android/keystore.properties`).
 
 ## Structure
 
@@ -55,15 +53,7 @@ test/                # FSRS unit tests
 tools/               # add_questions.py (bank authoring), log_receiver.py (debug log server)
 ```
 
-## Debug logging
 
-The app has an opt-in debug log that auto-uploads to your PC for analysis:
-
-1. On the PC, run the receiver: `python tools/log_receiver.py` (listens on `:8765`, saves to `~/reme-logs/`).
-2. In the app, open **设置 (Settings)** → toggle **调试日志**.
-3. Logs are captured (review actions, FSRS state, uncaught errors) and uploaded automatically after each review session — or tap **立即上传日志**.
-
-The upload URL defaults to `http://192.168.31.69:8765` and is editable in settings.
 
 ## License
 
